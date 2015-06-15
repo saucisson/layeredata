@@ -6,8 +6,11 @@ source = {
 }
 
 description = {
-  summary     = "",
-  detailed    = [[]],
+  summary     = "Layered Data",
+  detailed    = [[
+The `layeredata` (layered data) library allows to represent data as trees
+observed through several layers.
+]],
   license     = "MIT/X11",
   maintainer  = "Alban Linard <alban.linard@lsv.ens-cachan.fr>",
 }
