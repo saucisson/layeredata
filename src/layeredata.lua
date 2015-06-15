@@ -126,7 +126,7 @@ end
 
 function Proxy.__index (proxy, key)
   assert (getmetatable (proxy) == Proxy)
-  if key == Proxy.keys.special then
+  if key == Proxy.keys.special or key == Proxy.keys.value then
     return Proxy.value (proxy)
   end
   local proxies = proxy.__memo
