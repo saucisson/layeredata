@@ -398,12 +398,19 @@ Proxy.ipairs = Proxy.__ipairs
 function Proxy.__pairs (proxy)
   assert (getmetatable (proxy) == Proxy)
   local coroutine = coromake ()
+  local seen      = {}
+  local special   = {}
+  for _, k in pairs (Proxy.keys) do
+    special [k] = true
+  end
   return coroutine.wrap (function ()
     for _, t in Proxy.apply (proxy) do
       if  type (t) == "table"
       and getmetatable (t) ~= Proxy then
         for k in pairs (t) do
-          if k ~= Proxy.keys.value then
+          if  not seen [k]
+          and not special [k] then
+            seen [k] = true
             coroutine.yield (k, proxy [k])
           end
         end
