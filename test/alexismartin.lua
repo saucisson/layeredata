@@ -52,3 +52,6 @@ do
     print (k, p)
   end
 end
+
+print ("flattened layer1", dump (Proxy.flatten (layer1)))
+print ("flattened layer2", dump (Proxy.flatten (layer2)))
