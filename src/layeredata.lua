@@ -441,4 +441,35 @@ end
 
 Proxy.new_layer = Layer.new
 
+function Proxy.flatten (proxy)
+  assert (getmetatable (proxy) == Proxy)
+  local equivalents = {}
+  local function f (p)
+    if getmetatable (p) ~= Proxy then
+      return p
+    end
+    p = Proxy.dereference (p)
+    local result = {}
+    if equivalents [p] then
+      result = equivalents [p]
+    else
+      equivalents [p] = result
+    end
+    for key, pp in Proxy.pairs (p) do
+      result [f (key)] = f (pp)
+    end
+    result.__value__ = p.__value__
+    return result
+  end
+  local function g (t)
+    for k, v in pairs (t) do
+      if getmetatable (v) == Proxy then
+        t [k] = equivalents [v]
+      end
+    end
+    return t
+  end
+  return g (f (proxy))
+end
+
 return Proxy
