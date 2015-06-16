@@ -524,6 +524,13 @@ function Proxy.flatten (proxy)
       end
     end
     result.__value__ = p.__value__
+    local only_value = result.__value__ ~= nil
+    for k in pairs (result) do
+      only_value = only_value and k == "__value__"
+    end
+    if only_value then
+      result = result.__value__
+    end
     return result
   end
   local function g (t)
