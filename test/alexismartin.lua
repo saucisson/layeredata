@@ -9,8 +9,8 @@ local function dump (x)
 end
 
 local Proxy  = require "layeredata"
-local layer1 = Proxy.new_layer { name = "layer1" }
-local layer2 = Proxy.new_layer { name = "layer2" }
+local layer1 = Proxy.new { name = "layer1" }
+local layer2 = Proxy.new { name = "layer2" }
 local _      = Proxy.placeholder
 
 layer1.type1 = {
