@@ -342,10 +342,10 @@ Proxy.refines = c3.new {
 }
 
 function Proxy.apply (p)
-  assert (#p.__keys < 10)
   assert (getmetatable (p) == Proxy)
   local coroutine = coromake ()
   local seen      = {}
+  local noback    = {}
   local function perform (proxy)
     assert (getmetatable (proxy) == Proxy)
     proxy = Proxy.instantiate (proxy, p.__layer)
@@ -389,10 +389,15 @@ function Proxy.apply (p)
       local refines = Proxy.refines (current)
       for j = #refines-1, 1, -1 do
         local refined = refines [j]
-        for k = i+1, #keys do
-          refined = refined [keys [k]]
+        if not noback [refines [j]] then
+          local back = noback [refines [j]]
+          noback [refines [j]] = true
+          for k = i+1, #keys do
+            refined = refined [keys [k]]
+          end
+          perform (refined)
+          noback [refines [j]] = back
         end
-        perform (refined)
       end
       current = current.__parent
     end
