@@ -474,7 +474,7 @@ function Proxy.value (proxy)
   assert (getmetatable (proxy) == Proxy)
   for _, t in Proxy.apply (proxy) do
     if getmetatable (t) == Proxy then
-      return t
+      return Proxy.instantiate (t, proxy.__layer.__root)
     elseif type (t) ~= "table" then
       return t
     elseif t [Proxy.keys.value] then
