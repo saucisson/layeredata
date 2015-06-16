@@ -155,6 +155,7 @@ end
 
 function Proxy.__newindex (proxy, key, value)
   assert (getmetatable (proxy) == Proxy)
+  assert (type (key) ~= "table" or getmetatable (key) == Proxy)
   local layer = proxy.__layer
   proxy = Proxy.dereference (proxy)
   key   = Layer.import (key  )
