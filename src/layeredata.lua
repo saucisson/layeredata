@@ -279,6 +279,20 @@ function Proxy.dereference (proxy)
   return proxy
 end
 
+function Proxy.is_prefix (lhs, rhs)
+  assert (getmetatable (lhs) == Proxy)
+  assert (getmetatable (rhs) == Proxy)
+  if #lhs.__keys > #rhs.__keys then
+    return false
+  end
+  for i = 1, #lhs.__keys do
+    if lhs.__keys [i] ~= rhs.__keys [i] then
+      return false
+    end
+  end
+  return true
+end
+
 function Proxy.__lt (lhs, rhs)
   assert (getmetatable (lhs) == Proxy)
   assert (getmetatable (rhs) == Proxy)
