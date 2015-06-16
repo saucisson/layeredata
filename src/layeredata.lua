@@ -241,7 +241,7 @@ end
 function Proxy.instantiate (proxy, layer)
   assert (getmetatable (proxy) == Proxy)
   local keys   = proxy.__keys
-  local result = layer.__root
+  local result = layer
   for i = 1, #keys do
     result = result [keys [i]]
   end
@@ -296,7 +296,7 @@ end
 function Proxy.__lt (lhs, rhs)
   assert (getmetatable (lhs) == Proxy)
   assert (getmetatable (rhs) == Proxy)
-  lhs = Proxy.instantiate (lhs, rhs.__layer)
+  lhs = Proxy.instantiate (lhs, rhs.__layer.__root)
   lhs = Proxy.dereference (lhs)
   local parents = Proxy.refines (rhs)
   for i = 1, #parents-1 do -- last parent is self
@@ -333,7 +333,7 @@ Proxy.refines = c3.new {
     for i = 1, Proxy.size (proxy) do
       local p = proxy [i] [Proxy.keys.special]
       assert (getmetatable (p) == Proxy)
-      p = Proxy.instantiate (p, proxy.__layer)
+      p = Proxy.instantiate (p, proxy.__layer.__root)
       p = Proxy.dereference (p)
       result [i] = p
     end
@@ -346,9 +346,10 @@ function Proxy.apply (p)
   local coroutine = coromake ()
   local seen      = {}
   local noback    = {}
+  local layer     = p.__layer.__root
   local function perform (proxy)
     assert (getmetatable (proxy) == Proxy)
-    proxy = Proxy.instantiate (proxy, p.__layer)
+    proxy = Proxy.instantiate (proxy, layer)
     proxy = Proxy.dereference (proxy)
     if seen [proxy] then
       return nil
@@ -495,10 +496,12 @@ function Proxy.flatten (proxy)
   end
   local equivalents = {}
   local seen        = {}
+  local layer       = proxy.__layer.__root
   local function f (p)
     if getmetatable (p) ~= Proxy then
       return p
     end
+    p = Proxy.instantiate (p, layer)
     p = Proxy.dereference (p)
     local result = {}
     if equivalents [p] then
@@ -508,7 +511,8 @@ function Proxy.flatten (proxy)
     end
     for pp, t in Proxy.apply (p) do
       if not seen [pp] then
-        if type (t) == "table" then
+        if  type (t) == "table"
+        and getmetatable (t) ~= Proxy then
           local keys     = {}
           local previous = seen [pp]
           seen [pp] = true
