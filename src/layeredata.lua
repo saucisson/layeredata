@@ -512,7 +512,7 @@ function Proxy.flatten (proxy)
           local keys     = {}
           local previous = seen [pp]
           seen [pp] = true
-          for k, v in pairs (t) do
+          for k in pairs (t) do
             if  not keys    [k]
             and not special [k] then
               result [f (k)] = f (p [k])
