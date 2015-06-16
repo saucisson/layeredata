@@ -159,7 +159,8 @@ function Proxy.__newindex (proxy, key, value)
   proxy = Proxy.dereference (proxy)
   key   = Layer.import (key  )
   value = Layer.import (value)
-  if type (layer.__data) ~= "table" then
+  if type (layer.__data) ~= "table"
+  or getmetatable (layer.__data) == Proxy then
     layer.__data = {
       [Proxy.keys.value] = layer.__data,
     }
@@ -167,9 +168,11 @@ function Proxy.__newindex (proxy, key, value)
   local current = layer.__data
   local keys    = proxy.__keys
   for i = 1, #keys do
-    if type (current [keys [i]]) ~= "table" then
-      current [keys [i]] = {
-        [Proxy.keys.value] = current [keys [i]],
+    local key = keys [i]
+    if type (current [key]) ~= "table"
+    or getmetatable (current [key]) == Proxy then
+      current [key] = {
+        [Proxy.keys.value] = current [key],
       }
     end
     current = current [keys [i]]
