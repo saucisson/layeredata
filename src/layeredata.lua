@@ -182,6 +182,33 @@ function Proxy.__newindex (proxy, key, value)
   end
 end
 
+function Proxy.replacewith (proxy, x)
+  assert (getmetatable (proxy) == Proxy)
+  local layer = proxy.__layer
+  proxy = Proxy.dereference (proxy)
+  x     = Layer.import (x)
+  if type (layer.__data) ~= "table" then
+    layer.__data = {
+      [Proxy.keys.value] = layer.__data,
+    }
+  end
+  local keys    = proxy.__keys
+  if #keys == 0 then
+    layer.__data = x
+  else
+    local current = layer.__data
+    for i = 1, #keys-1 do
+      if type (current [keys [i]]) ~= "table" then
+        current [keys [i]] = {
+          [Proxy.keys.value] = current [keys [i]],
+        }
+      end
+      current = current [keys [i]]
+    end
+    current [keys [#keys]] = x
+  end
+end
+
 function Proxy.export (proxy)
   assert (getmetatable (proxy) == Proxy)
   local layer    = proxy.__layer
