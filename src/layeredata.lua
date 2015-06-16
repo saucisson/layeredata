@@ -470,7 +470,12 @@ Proxy.new = Layer.__new
 
 function Proxy.flatten (proxy)
   assert (getmetatable (proxy) == Proxy)
+  local special   = {}
+  for _, k in pairs (Proxy.keys) do
+    special [k] = true
+  end
   local equivalents = {}
+  local seen        = {}
   local function f (p)
     if getmetatable (p) ~= Proxy then
       return p
@@ -482,8 +487,22 @@ function Proxy.flatten (proxy)
     else
       equivalents [p] = result
     end
-    for key, pp in Proxy.pairs (p) do
-      result [f (key)] = f (pp)
+    for pp, t in Proxy.apply (p) do
+      if not seen [pp] then
+        if type (t) == "table" then
+          local keys     = {}
+          local previous = seen [pp]
+          seen [pp] = true
+          for k, v in pairs (t) do
+            if  not keys    [k]
+            and not special [k] then
+              result [f (k)] = f (p [k])
+              keys [k] = true
+            end
+          end
+          seen [pp] = previous
+        end
+      end
     end
     result.__value__ = p.__value__
     return result
