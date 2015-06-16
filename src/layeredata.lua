@@ -319,6 +319,7 @@ function Proxy.__le (lhs, rhs)
 end
 
 Proxy.depends = c3.new {
+  cache      = false,
   superclass = function (proxy)
     assert (getmetatable (proxy) == Proxy)
     if type (proxy.__layer.__data) == "table" then
@@ -328,6 +329,7 @@ Proxy.depends = c3.new {
 }
 
 Proxy.refines = c3.new {
+  cache      = false,
   superclass = function (proxy)
     assert (getmetatable (proxy) == Proxy)
     proxy = Proxy.dereference (proxy)
