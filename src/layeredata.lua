@@ -168,14 +168,14 @@ function Proxy.__newindex (proxy, key, value)
   local current = layer.__data
   local keys    = proxy.__keys
   for i = 1, #keys do
-    local key = keys [i]
-    if type (current [key]) ~= "table"
-    or getmetatable (current [key]) == Proxy then
-      current [key] = {
-        [Proxy.keys.value] = current [key],
+    local ikey = keys [i]
+    if type (current [ikey]) ~= "table"
+    or getmetatable (current [ikey]) == Proxy then
+      current [ikey] = {
+        [Proxy.keys.value] = current [ikey],
       }
     end
-    current = current [keys [i]]
+    current = current [ikey]
   end
   if key == Proxy.keys.special then
     current [Proxy.keys.value] = value
