@@ -11,7 +11,6 @@ IgnoreValues.__mode      = "v"
 
 Proxy.keys = {
   depends = "__depends__",
-  meta    = "__meta__",
   refines = "__refines__",
   value   = "__value__",
   special = nil,
