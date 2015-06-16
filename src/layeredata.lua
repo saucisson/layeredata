@@ -534,9 +534,11 @@ function Proxy.flatten (proxy)
     return result
   end
   local function g (t)
-    for k, v in pairs (t) do
-      if getmetatable (v) == Proxy then
-        t [k] = equivalents [v]
+    if type (t) == "table" then
+      for k, v in pairs (t) do
+        if getmetatable (v) == Proxy then
+          t [k] = equivalents [v]
+        end
       end
     end
     return t
