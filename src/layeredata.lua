@@ -29,7 +29,7 @@ end
 local pack   = table.pack   or function (...) return { ... } end
 local unpack = table.unpack or unpack
 
-function Layer.new (t)
+function Layer.__new (t)
   assert (type (t) == "table")
   local layer = setmetatable ({
     __name    = t.name,
@@ -37,7 +37,7 @@ function Layer.new (t)
     __root    = false,
     __proxies = setmetatable ({}, IgnoreValues),
   }, Layer)
-  local proxy = Proxy.new (layer)
+  local proxy = Proxy.__new (layer)
   layer.__root = proxy
   return proxy
 end
@@ -48,7 +48,7 @@ function Layer.import (data)
   elseif getmetatable (data) == Proxy then
     return data
   elseif data.__proxy then
-    return Proxy.new (data)
+    return Proxy.__new (data)
   else
     local updates = {}
     for key, value in pairs (data) do
@@ -73,7 +73,7 @@ end
 
 local default_proxies = setmetatable ({}, IgnoreValues)
 
-function Proxy.new (t)
+function Proxy.__new (t)
   if getmetatable (t) == Layer then
     return setmetatable ({
       __keys   = {},
@@ -439,7 +439,7 @@ function Proxy.exists (proxy)
   return Proxy.apply (proxy) (proxy) ~= nil
 end
 
-Proxy.new_layer = Layer.new
+Proxy.new = Layer.__new
 
 function Proxy.flatten (proxy)
   assert (getmetatable (proxy) == Proxy)
