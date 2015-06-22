@@ -1,0 +1,79 @@
+#! /usr/bin/env lua
+
+local colors   = require 'ansicolors'
+local runner   = require "luacov.runner"
+local reporter = require "luacov.reporter"
+local configuration = runner.load_config ()
+reporter.report()
+local pwd      = os.getenv "PWD" .. "/src/"
+
+local report = {}
+
+local file  = "luacov.report.out"
+local lines = {}
+local output = nil
+for line in io.lines(file) do
+  if line:find ("==============================================================================") ~= 1 then
+    if line:find "Summary" == 1 then
+      if type (output) == "userdata" then
+        io.close (output)
+      end
+      output = "summary"
+    elseif line:find (pwd, 1, true) == 1 then
+      if type (output) == "userdata" then
+        io.close (output)
+      end
+      local s, e = line:find (pwd, 1, true)
+      local name = "cov/" .. line:sub (e + 1)
+      output = io.open(name, "w")
+    elseif output == "summary" then
+      if line:find (pwd, 1, true) then
+        local parts = {}
+        for part in line:gmatch "%S+" do
+          parts [#parts+1] = part
+        end
+        if #parts == 4 and parts [4] ~= "" then
+          local filename = parts [4]
+          local percent  = parts [3]
+          local _, e = filename:find (pwd, 1, true)
+          report [filename:sub (e+1)] = percent
+        end
+      end
+    elseif type (output) == "userdata" then
+      output:write (line .. "\n")
+    end
+  end
+end
+if type (output) == "userdata" then
+  io.close (output)
+end
+
+local max_size = 0
+for k, _ in pairs (report) do
+  if #k > max_size then
+    max_size = #k
+  end
+end
+
+max_size = max_size + 3
+
+local keys = {}
+for k, _ in pairs (report) do
+  keys [#keys + 1] = k
+end
+table.sort (keys)
+
+for _, k in ipairs (keys) do
+  local v = report [k]
+  if v == "100.00%" then
+    status = colors("%{bright green}Full")
+  else
+    status = colors("%{bright red}" .. v)
+  end
+  local line = k
+  for i = #k, max_size do
+    line = line .. " "
+  end
+  line = line .. status
+  print ("Coverage " .. line)
+end
