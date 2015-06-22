@@ -1,3 +1,28 @@
+-- Examples
+-- ========
+--
+--    > Layer = require "layeredata"
+--    > a = Layer.new { name = "a" }
+--    > b = Layer.new { name = "b" }
+--    > a.x = 1
+--    > a.y = 2
+--    > b.__depends__ = { a }
+--    > b.x = 3
+--    > b.z = 4
+--    > = a.x
+--    1
+--    > = a.y
+--    2
+--    > = a.z
+--    nil
+--    > = b.x
+--    3
+--    > = b.y
+--    2
+--    > = b.z
+--    4
+
+
 local coromake = require "coroutine.make"
 local c3       = require "c3"
 local serpent  = require "serpent"
