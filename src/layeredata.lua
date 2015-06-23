@@ -9,19 +9,10 @@
 --    > b.__depends__ = { a }
 --    > b.x = 3
 --    > b.z = 4
---    > = a.x
---    1
---    > = a.y
---    2
---    > = a.z
---    nil
---    > = b.x
---    3
---    > = b.y
---    2
---    > = b.z
---    4
-
+--    > = a.x, a.y, a.z
+--    1, 2, nil
+--    > = b.x, b.y, b.z
+--    3, 2, 4
 
 local coromake = require "coroutine.make"
 local c3       = require "c3"
@@ -87,6 +78,9 @@ function Layer.import (data)
   end
 end
 
+--    > = tostring (a)
+--    [[<"a">]]
+
 function Layer.__tostring (layer)
   assert (getmetatable (layer) == Layer)
   return "layer:" .. totypedstring (layer.__name)
@@ -124,6 +118,10 @@ function Proxy.__serialize (proxy)
     unpack (proxy.__keys),
   }
 end
+
+--    > a.i = {}
+--    > = tostring (a.i)
+--    [=[<"a"> ["i"]]=]
 
 function Proxy.__tostring (proxy)
   assert (getmetatable (proxy) == Proxy)
