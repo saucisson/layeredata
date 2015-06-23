@@ -29,6 +29,7 @@ IgnoreValues.__mode      = "v"
 Proxy.keys = {
   depends = "__depends__",
   refines = "__refines__",
+  default = "__default__",
   label   = "__label__",
 }
 
@@ -142,7 +143,7 @@ function Proxy.__tostring (proxy)
   return table.concat (result, " ")
 end
 
-function Proxy.__index (proxy, key)
+function Proxy.sub (proxy, key)
   assert (getmetatable (proxy) == Proxy)
   local proxies = proxy.__memo
   local found   = proxies [key]
@@ -160,9 +161,15 @@ function Proxy.__index (proxy, key)
     }, Proxy)
     proxies [key] = found
   end
-  local _, c = Proxy.apply (found) (found)
+  return found
+end
+
+function Proxy.__index (proxy, key)
+  assert (getmetatable (proxy) == Proxy)
+  proxy = Proxy.sub (proxy, key)
+  local _, c = Proxy.apply (proxy) (proxy)
   if  type (c) == "table" and getmetatable (c) ~= Reference then
-    return found
+    return proxy
   else
     return c
   end
@@ -300,17 +307,11 @@ function Proxy.apply (p)
             return
           end
           for k = j+1, #keys do
-            referenced.__keys [#referenced.__keys+1] = keys [k]
+            referenced = Proxy.sub (referenced, keys [k])
           end
-          if getmetatable (referenced) == Proxy then
-            return perform (referenced)
-          else
-            coroutine.yield (proxy, referenced)
-            return
-          end
+          return perform (referenced)
         end
-        if j ~= #keys and type (current) ~= "table"
-        then
+        if j ~= #keys and type (current) ~= "table" then
           current = nil
           break
         end
@@ -340,13 +341,23 @@ function Proxy.apply (p)
           local back = noback [refines [j]]
           noback [refines [j]] = true
           for k = i+1, #keys do
-            refined = refined [keys [k]]
+            refined = Proxy.sub (refined, keys [k])
           end
           perform (refined)
           noback [refines [j]] = back
         end
       end
       current = current.__parent
+    end
+    -- 4. Search default:
+    current = proxy.__parent
+    for i = #keys-2, 0, -1 do
+      current = current.__parent
+      local c = Proxy.sub (current, Proxy.keys.default)
+      for j = i+2, #keys do
+        c = Proxy.sub (c, keys [j])
+      end
+      perform (c)
     end
   end
   return coroutine.wrap (function ()
@@ -510,10 +521,7 @@ function Reference.resolve (reference, proxy)
     local current = proxy.__layer.__root
     local keys    = reference.__keys
     for i = 1, #keys do
-      if getmetatable (current) ~= Proxy then
-        return nil
-      end
-      current = current [keys [i]]
+      current = Proxy.sub (current, keys [i])
     end
     return current
   else -- relative
@@ -522,10 +530,7 @@ function Reference.resolve (reference, proxy)
       if current [Proxy.keys.label] == reference.__from then
         local keys = reference.__keys
         for i = 1, #keys do
-          if getmetatable (current) ~= Proxy then
-            return nil
-          end
-          current = current [keys [i]]
+          current = Proxy.sub (current, keys [i])
         end
         return current
       end
