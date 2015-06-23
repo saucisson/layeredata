@@ -172,8 +172,12 @@ function Proxy.__newindex (proxy, key, value)
   local current = layer.__data
   local keys    = proxy.__keys
   for i = 1, #keys do
+    if current [keys [i]] == nil then
+      current [keys [i]] = {}
+    end
+    assert (type (current [keys [i]]) == "table"
+        and getmetatable (current [keys [i]]) ~= Proxy)
     current = current [keys [i]]
-    assert (type (current) == "table" and getmetatable (current) ~= Proxy)
   end
   current [key] = value
 end
