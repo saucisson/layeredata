@@ -36,13 +36,17 @@ Proxy.specials = {
   meta    = "__meta__",
 }
 
+
 local function totypedstring (x)
+  return tostring (x)
+  --[[
   return serpent.line (x, {
     indent   = "  ",
     comment  = false,
     sortkeys = true,
     compact  = false,
   })
+  --]]
 end
 
 local unpack = table.unpack or unpack
@@ -127,6 +131,30 @@ function Proxy.__serialize (proxy)
     __layer = proxy.__layer.__name,
     unpack (proxy.__keys),
   }
+end
+
+function Proxy.dump (proxy, serialize)
+  assert (getmetatable (proxy) == Proxy)
+  local Layer_serialize     = Layer    .__serialize
+  local Proxy_serialize     = Proxy    .__serialize
+  local Reference_serialize = Reference.__serialize
+  if not serialize then
+    Layer    .__serialize = nil
+    Proxy    .__serialize = nil
+    Reference.__serialize = nil
+  end
+  local result = serpent.dump (Proxy.export (proxy), {
+    indent   = "  ",
+    comment  = false,
+    sortkeys = true,
+    compact  = false,
+  })
+  if not serialize then
+    Layer    .__serialize = Layer_serialize
+    Proxy    .__serialize = Proxy_serialize
+    Reference.__serialize = Reference_serialize
+  end
+  return result
 end
 
 --    > a.i = {}
