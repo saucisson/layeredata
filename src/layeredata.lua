@@ -142,25 +142,24 @@ function Proxy.__index (proxy, key)
   assert (getmetatable (proxy) == Proxy)
   local proxies = proxy.__memo
   local found   = proxies [key]
-  if found then
-    return found
+  if not found then
+    local nkeys = {}
+    for i = 1, #proxy.__keys do
+      nkeys [i] = proxy.__keys [i]
+    end
+    nkeys [#nkeys+1] = key
+    found = setmetatable ({
+      __layer  = proxy.__layer,
+      __keys   = nkeys,
+      __memo   = setmetatable ({}, IgnoreValues),
+      __parent = proxy,
+    }, Proxy)
+    proxies [key] = found
   end
-  local nkeys = {}
-  for i = 1, #proxy.__keys do
-    nkeys [i] = proxy.__keys [i]
-  end
-  nkeys [#nkeys+1] = key
-  proxy = setmetatable ({
-    __layer  = proxy.__layer,
-    __keys   = nkeys,
-    __memo   = setmetatable ({}, IgnoreValues),
-    __parent = proxy,
-  }, Proxy)
-  proxies [key] = proxy
-  local _, c = Proxy.apply (proxy) (proxy)
+  local _, c = Proxy.apply (found) (found)
   if  type (c) == "table"
   and getmetatable (c) ~= Proxy then
-    return proxy
+    return found
   else
     return c
   end
@@ -169,8 +168,6 @@ end
 function Proxy.__newindex (proxy, key, value)
   assert (getmetatable (proxy) == Proxy)
   assert (type (key) ~= "table" or getmetatable (key) == Proxy)
-  local proxies = proxy.__memo
-  proxies [key] = nil
   local layer = proxy.__layer
   key   = Layer.import (key  )
   value = Layer.import (value)
