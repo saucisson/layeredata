@@ -29,8 +29,11 @@ IgnoreValues.__mode      = "v"
 Proxy.keys = {
   depends = "__depends__",
   refines = "__refines__",
+}
+Proxy.specials = {
   default = "__default__",
   label   = "__label__",
+  meta    = "__meta__",
 }
 
 local function totypedstring (x)
@@ -353,7 +356,7 @@ function Proxy.apply (p)
     current = proxy.__parent
     for i = #keys-2, 0, -1 do
       current = current.__parent
-      local c = Proxy.sub (current, Proxy.keys.default)
+      local c = Proxy.sub (current, Proxy.specials.default)
       for j = i+2, #keys do
         c = Proxy.sub (c, keys [j])
       end
@@ -404,6 +407,9 @@ function Proxy.__pairs (proxy)
   local seen      = {}
   local special   = {}
   for _, k in pairs (Proxy.keys) do
+    special [k] = true
+  end
+  for _, k in pairs (Proxy.specials) do
     special [k] = true
   end
   return coroutine.wrap (function ()
@@ -527,7 +533,7 @@ function Reference.resolve (reference, proxy)
   else -- relative
     local current = proxy.__parent
     while current do
-      if current [Proxy.keys.label] == reference.__from then
+      if current [Proxy.specials.label] == reference.__from then
         local keys = reference.__keys
         for i = 1, #keys do
           current = Proxy.sub (current, keys [i])
