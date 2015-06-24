@@ -563,7 +563,7 @@ function Reference.resolve (reference, proxy)
       end
     end
     local current = proxy
-    for i = begin, #pkeys do
+    for _ = begin, #pkeys do
       current = current.__parent
     end
     while current do
