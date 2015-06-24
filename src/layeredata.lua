@@ -36,9 +36,19 @@ Proxy.specials = {
   meta    = "__meta__",
 }
 
-
 local function totypedstring (x)
   return tostring (x)
+end
+
+local function special_keys ()
+  local special = {}
+  for _, k in pairs (Proxy.keys) do
+    special [k] = true
+  end
+  for _, k in pairs (Proxy.specials) do
+    special [k] = true
+  end
+  return special
 end
 
 local unpack = table.unpack or unpack
@@ -337,10 +347,7 @@ function Proxy.apply (p)
       end
     end
     -- 2. Do not search in parents within special keys:
-    local special = {}
-    for _, k in pairs (Proxy.keys) do
-      special [k] = true
-    end
+    local special = special_keys ()
     for i = 1, #keys do
       local key = keys [i]
       if special [key] then
@@ -544,12 +551,26 @@ function Reference.resolve (reference, proxy)
     end
     return current
   else -- relative
-    local current = proxy.__parent
+    local special = special_keys ()
+    local pkeys   = proxy.__keys
+    local begin   = 0
+    for i = 1, #pkeys do
+      local key = pkeys [i]
+      if special [key] then
+        break
+      else
+        begin = begin+1
+      end
+    end
+    local current = proxy
+    for i = begin, #pkeys do
+      current = current.__parent
+    end
     while current do
       if current [Proxy.specials.label] == reference.__from then
-        local keys = reference.__keys
-        for i = 1, #keys do
-          current = Proxy.sub (current, keys [i])
+        local rkeys = reference.__keys
+        for i = 1, #rkeys do
+          current = Proxy.sub (current, rkeys [i])
         end
         return current
       end
