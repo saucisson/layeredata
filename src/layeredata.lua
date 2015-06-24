@@ -297,12 +297,12 @@ Proxy.refines = c3.new {
   superclass = function (proxy)
     assert (getmetatable (proxy) == Proxy)
     local result  = {}
-    proxy = proxy [Proxy.keys.refines]
-    if not proxy then
+    local refines = proxy [Proxy.keys.refines]
+    if not refines then
       return result
     end
-    for i = 1, Proxy.size (proxy) do
-      result [i] = proxy [i]
+    for i = 1, Proxy.size (refines) do
+      result [i] = refines [i]
       assert (getmetatable (result [i]) == Proxy)
     end
     return result
