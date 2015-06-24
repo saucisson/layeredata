@@ -39,14 +39,6 @@ Proxy.specials = {
 
 local function totypedstring (x)
   return tostring (x)
-  --[[
-  return serpent.line (x, {
-    indent   = "  ",
-    comment  = false,
-    sortkeys = true,
-    compact  = false,
-  })
-  --]]
 end
 
 local unpack = table.unpack or unpack
@@ -106,9 +98,6 @@ function Layer.import (data)
   end
 end
 
---    > = tostring (a)
---    [[<"a">]]
-
 function Layer.__tostring (layer)
   assert (getmetatable (layer) == Layer)
   return "layer:" .. totypedstring (layer.__name)
@@ -156,10 +145,6 @@ function Proxy.dump (proxy, serialize)
   end
   return result
 end
-
---    > a.i = {}
---    > = tostring (a.i)
---    [=[<"a"> ["i"]]=]
 
 function Proxy.__tostring (proxy)
   assert (getmetatable (proxy) == Proxy)
