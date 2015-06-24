@@ -192,10 +192,10 @@ end
 
 function Proxy.__index (proxy, key)
   assert (getmetatable (proxy) == Proxy)
-  proxy = Proxy.sub (proxy, key)
-  local _, c = Proxy.apply (proxy) (proxy)
+  local p = Proxy.sub (proxy, key)
+  local _, c = Proxy.apply (p) (p)
   if  type (c) == "table" and getmetatable (c) ~= Reference then
-    return proxy
+    return p
   else
     return c
   end
