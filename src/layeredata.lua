@@ -18,9 +18,15 @@ local coromake = require "coroutine.make"
 local c3       = require "c3"
 local serpent  = require "serpent"
 
-local Layer              = {}
-local Proxy              = {}
-local Reference          = {}
+local Layer              = setmetatable ({}, {
+  __tostring = function () return "Layer" end
+})
+local Proxy              = setmetatable ({}, {
+  __tostring = function () return "Proxy" end
+})
+local Reference          = setmetatable ({}, {
+  __tostring = function () return "Reference" end
+})
 local IgnoreKeys         = {}
 IgnoreKeys.__mode        = "k"
 local IgnoreValues       = {}
