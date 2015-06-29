@@ -66,46 +66,61 @@ function Layer.__new (t)
   return proxy
 end
 
-function Layer.import (data)
+function Layer.import (data, ref, seen)
+  if not ref then
+    ref = Reference.new (false)
+  end
+  if not seen then
+    seen = {}
+  end
+  if seen [data] then
+    return seen [data]
+  end
+  local result
   if type (data) ~= "table" then
     return data
   elseif getmetatable (data) == Proxy then
     if #data.__keys == 0 then
-      return data
+      result = data
     else
       local reference = Reference.new (false)
       local keys      = data.__keys
       for i = 1, #keys do
         reference = reference [keys [i]]
       end
-      return reference
+      result = reference
     end
   elseif getmetatable (data) == Reference then
-    return data
+    result = data
   elseif data.__proxy then
     assert (#data == 0)
-    return Proxy.layerof (data.__layer)
+    result = Proxy.layerof (data.__layer)
   elseif data.__reference then
     local reference = Reference.new (data.__from)
     for i = 1, #data do
       reference = reference [data [i]]
     end
-    return reference
+    result = reference
   else
+    seen [data] = ref
     local updates = {}
     for key, value in pairs (data) do
       if type (key  ) == "table" then
-        updates [key] = Layer.import (key)
+        updates [key] = Layer.import (key, ref, seen)
       end
       if type (value) == "table" then
-        data    [key] = Layer.import (value)
+        data    [key] = Layer.import (value, ref [key], seen)
       end
     end
     for old_key, new_key in pairs (updates) do
       data [old_key], data [new_key] = nil, data [old_key]
     end
-    return data
+    result = data
   end
+  if not seen [data] then
+    seen [data] = result
+  end
+  return result
 end
 
 function Layer.__tostring (layer)
