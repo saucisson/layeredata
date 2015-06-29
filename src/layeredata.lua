@@ -213,10 +213,10 @@ end
 
 function Proxy.__index (proxy, key)
   assert (getmetatable (proxy) == Proxy)
-  local p = Proxy.sub (proxy, key)
-  local _, c = Proxy.apply (p) (p)
-  if  type (c) == "table" and getmetatable (c) ~= Reference then
-    return p
+  local p    = Proxy.sub (proxy, key)
+  local r, c = Proxy.apply (p) (p)
+  if type (c) == "table" or r ~= p then
+    return r
   else
     return c
   end
@@ -323,8 +323,8 @@ Proxy.refines = c3.new {
       return result
     end
     for i = 1, Proxy.size (refines) do
+      assert (getmetatable (refines [i]) == Proxy)
       result [i] = refines [i]
-      assert (getmetatable (result [i]) == Proxy)
     end
     return result
   end,
@@ -351,7 +351,8 @@ function Proxy.apply (p)
         if getmetatable (current) == Reference then
           local referenced = Reference.resolve (current, proxy)
           if not referenced then
-            return
+            current = nil
+            break
           end
           for k = j+1, #keys do
             referenced = Proxy.sub (referenced, keys [k])
@@ -572,21 +573,7 @@ function Reference.resolve (reference, proxy)
     end
     return current
   else -- relative
-    local special = special_keys ()
-    local pkeys   = proxy.__keys
-    local begin   = 0
-    for i = 1, #pkeys do
-      local key = pkeys [i]
-      if special [key] then
-        break
-      else
-        begin = begin+1
-      end
-    end
-    local current = proxy
-    for _ = begin, #pkeys do
-      current = current.__parent
-    end
+    local current = proxy.__parent
     while current do
       if current [Proxy.specials.label] == reference.__from then
         local rkeys = reference.__keys
