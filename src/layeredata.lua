@@ -412,11 +412,11 @@ end
 
 function Proxy.__len (proxy)
   assert (getmetatable (proxy) == Proxy)
-  local result    = {}
+  local result = {}
   for _, t in Proxy.apply (proxy) do
-    if  type (t) == "table" and getmetatable (t) ~= Reference then
+    if type (t) == "table" and getmetatable (t) ~= Reference then
       for k in pairs (t) do
-        if type (k) == "number" then
+        if type (k) == "number" and proxy [k] then
           result [k] = true
         end
       end
@@ -458,8 +458,7 @@ function Proxy.__pairs (proxy)
     for _, t in Proxy.apply (proxy) do
       if  type (t) == "table" and getmetatable (t) ~= Reference then
         for k in pairs (t) do
-          if  not seen [k]
-          and not special [k] then
+          if  not seen [k] and not special [k] and proxy [k] then
             seen [k] = true
             coroutine.yield (k, proxy [k])
           end
