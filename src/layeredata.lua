@@ -519,7 +519,10 @@ function Proxy.flatten (proxy)
     end
     return t
   end
-  return g (f (proxy))
+  return Layer.__new {
+    name = "flattened:" .. tostring (proxy.__layer.__name),
+    data = g (f (proxy)),
+  }
 end
 
 Reference.memo = setmetatable ({}, IgnoreValues)
