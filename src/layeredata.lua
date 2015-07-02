@@ -214,11 +214,13 @@ end
 function Proxy.__index (proxy, key)
   assert (getmetatable (proxy) == Proxy)
   local p    = Proxy.sub (proxy, key)
-  local r, c = Proxy.apply (p) (p)
-  if type (c) == "table" or r ~= p then
-    return r
-  else
+  local _, c = Proxy.apply (p) (p)
+  if getmetatable (c) == Proxy then
     return c
+  elseif type (c) ~= "table" then
+    return c
+  else
+    return p
   end
 end
 
@@ -575,7 +577,15 @@ function Reference.resolve (reference, proxy)
     end
     return current
   else -- relative
-    local current = proxy.__parent
+    local special = special_keys ()
+    local current = proxy.__layer.__root
+    for i = 1, #proxy.__keys-1 do
+      local key = proxy.__keys [i]
+      if special [key] then
+        break
+      end
+      current = current [key]
+    end
     while current do
       if current [Proxy.specials.label] == reference.__from then
         local rkeys = reference.__keys
