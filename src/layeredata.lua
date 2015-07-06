@@ -661,7 +661,7 @@ end
 function Reference.__tostring (reference)
   assert (getmetatable (reference) == Reference)
   local result = {}
-  result [1] = reference.__from
+  result [1] = tostring (reference.__from)
   result [2] = "->"
   local keys = reference.__keys
   for i = 1, #keys do
