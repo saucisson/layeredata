@@ -32,9 +32,16 @@ IgnoreKeys.__mode        = "k"
 local IgnoreValues       = {}
 IgnoreValues.__mode      = "v"
 
+-- How to apply __checks__?
+-- 1. apply on modified object its __checks__,
+-- 2. apply on parents,
+-- 3. applied on references and their parents
+
 Proxy.keys = {
-  depends = "__depends__",
-  refines = "__refines__",
+  depends  = "__depends__",
+  refines  = "__refines__",
+  checks   = "__checks__",
+  referred = "__referred__",
 }
 Proxy.specials = {
   default = "__default__",
@@ -155,10 +162,11 @@ end
 function Proxy.__new (t)
   assert (getmetatable (t) == Layer)
   return setmetatable ({
-    __keys   = {},
-    __layer  = t,
-    __memo   = t.__proxies,
-    __parent = false,
+    __keys      = {},
+    __layer     = t,
+    __memo      = t.__proxies,
+    __parent    = false,
+    __writeable = true,
   }, Proxy)
 end
 
@@ -219,10 +227,11 @@ function Proxy.sub (proxy, key)
     end
     nkeys [#nkeys+1] = key
     found = setmetatable ({
-      __layer  = proxy.__layer,
-      __keys   = nkeys,
-      __memo   = setmetatable ({}, IgnoreValues),
-      __parent = proxy,
+      __layer     = proxy.__layer,
+      __keys      = nkeys,
+      __memo      = setmetatable ({}, IgnoreValues),
+      __parent    = proxy,
+      __writeable = proxy.__writeable,
     }, Proxy)
     proxies [key] = found
   end
