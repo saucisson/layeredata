@@ -84,9 +84,8 @@ function Layer.__new (t)
   return proxy
 end
 
-function Layer.clear_caches (layer)
-  assert (getmetatable (layer) == Proxy)
-  layer.__layer.__caches = {
+function Layer.clear_caches ()
+  Layer.caches = {
     index  = setmetatable ({}, IgnoreKeys),
     pairs  = setmetatable ({}, IgnoreKeys),
     ipairs = setmetatable ({}, IgnoreKeys),
@@ -241,7 +240,7 @@ end
 function Proxy.__index (proxy, key)
   assert (getmetatable (proxy) == Proxy)
   proxy = Proxy.sub (proxy, key)
-  local cache = proxy.__layer.__caches.index
+  local cache = Layer.caches.index
   if cache [proxy] ~= nil then
     return cache [proxy]
   end
@@ -277,6 +276,7 @@ function Proxy.__newindex (proxy, key, value)
     current = current [k]
   end
   current [key] = value
+  Layer.clear_caches (proxy)
   -- FIXME: run checks
 end
 
@@ -460,7 +460,7 @@ end
 
 function Proxy.__len (proxy)
   assert (getmetatable (proxy) == Proxy)
-  local cache = proxy.__layer.__caches.len
+  local cache = Layer.caches.len
   if cache [proxy] then
     return cache [proxy]
   end
@@ -482,7 +482,7 @@ Proxy.size = Proxy.__len
 
 function Proxy.__ipairs (proxy)
   assert (getmetatable (proxy) == Proxy)
-  local cache = proxy.__layer.__caches.ipairs
+  local cache = Layer.caches.ipairs
   if cache [proxy] then
     return coroutine.wrap (function ()
       for i, v in ipairs (cache [proxy]) do
@@ -509,7 +509,7 @@ Proxy.ipairs = Proxy.__ipairs
 
 function Proxy.__pairs (proxy, except)
   assert (getmetatable (proxy) == Proxy)
-  local cache = proxy.__layer.__caches.ipairs
+  local cache = Layer.caches.ipairs
   if cache [proxy] then
     return coroutine.wrap (function ()
       for k, v in pairs (cache [proxy]) do
@@ -671,5 +671,9 @@ function Reference.__tostring (reference)
 end
 
 Proxy.reference = Reference.new
+
+Proxy.clear_caches = Layer.clear_caches
+
+Layer.clear_caches ()
 
 return Proxy
