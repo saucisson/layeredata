@@ -143,7 +143,9 @@ function Layer.import (data, ref, seen)
       end
     end
     for old_key, new_key in pairs (updates) do
-      data [old_key], data [new_key] = nil, data [old_key]
+      local value = data [old_key]
+      data [old_key] = nil
+      data [new_key] = value
     end
     result = data
   end
@@ -258,21 +260,24 @@ end
 function Proxy.__newindex (proxy, key, value)
   assert (getmetatable (proxy) == Proxy)
   assert (proxy.__writeable)
-  assert (type (key) ~= "table" or getmetatable (key) == Proxy)
+  assert (type (key) ~= "table" or getmetatable (key) == Proxy or getmetatable (key) == Reference)
   local layer = proxy.__layer
-  local cache = proxy.__layer.__caches.index
   proxy = Proxy.sub (proxy, key)
-  cache [proxy] = nil
   key   = Layer.import (key  )
   value = Layer.import (value)
+  local p, r = Proxy.apply (proxy, true) ()
+  if r == nil then
+    p = proxy
+  elseif getmetatable (r) == Reference and getmetatable (value) ~= Reference then
+    p = Reference.resolve (r, proxy)
+  end
   local current = layer.__data
-  local keys    = proxy.__keys
+  local keys    = p.__keys
   for i = 1, #keys-1 do
     local k = keys [i]
     if current [k] == nil then
       current [k] = {}
     end
-    assert (type (current [k]) == "table" and getmetatable (current [k]) ~= Reference)
     current = current [k]
   end
   current [key] = value
