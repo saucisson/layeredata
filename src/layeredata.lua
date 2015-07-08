@@ -180,6 +180,19 @@ function Proxy.__serialize (proxy)
   }
 end
 
+function Proxy.__tostring (proxy)
+  assert (getmetatable (proxy) == Proxy)
+  local result = {}
+  result [1] = proxy.__layer
+           and "<" .. totypedstring (proxy.__layer.__name) .. ">"
+            or "<anonymous layer>"
+  local keys = proxy.__keys
+  for i = 1, #keys do
+    result [i+1] = "[" .. totypedstring (keys [i]) .. "]"
+  end
+  return table.concat (result, " ")
+end
+
 function Proxy.dump (proxy, serialize)
   assert (getmetatable (proxy) == Proxy)
   local Layer_serialize     = Layer    .__serialize
@@ -202,19 +215,6 @@ function Proxy.dump (proxy, serialize)
     Reference.__serialize = Reference_serialize
   end
   return result
-end
-
-function Proxy.__tostring (proxy)
-  assert (getmetatable (proxy) == Proxy)
-  local result = {}
-  result [1] = proxy.__layer
-           and "<" .. totypedstring (proxy.__layer.__name) .. ">"
-            or "<anonymous layer>"
-  local keys = proxy.__keys
-  for i = 1, #keys do
-    result [i+1] = "[" .. totypedstring (keys [i]) .. "]"
-  end
-  return table.concat (result, " ")
 end
 
 function Proxy.sub (proxy, key)
