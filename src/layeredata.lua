@@ -550,7 +550,6 @@ Proxy.new = Layer.__new
 
 function Proxy.flatten (proxy)
   assert (getmetatable (proxy) == Proxy)
---  local special     = special_keys ()
   local equivalents = {}
   local function f (p)
     if getmetatable (p) ~= Proxy then
