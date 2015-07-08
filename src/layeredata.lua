@@ -330,10 +330,10 @@ function Proxy.is_prefix (lhs, rhs)
   return true
 end
 
-function Proxy.get (proxy, no_resolve)
+function Proxy.is_reference (proxy)
   assert (getmetatable (proxy) == Proxy)
-  local _, r = Proxy.apply (proxy, no_resolve) ()
-  return r
+  local _, r = Proxy.apply (proxy, true) ()
+  return getmetatable (r) == Reference
 end
 
 function Proxy.__lt (lhs, rhs)
