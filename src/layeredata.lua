@@ -560,7 +560,7 @@ function Proxy.flatten (proxy)
     local result = {}
     equivalents [p] = result
     for k in Proxy.__pairs (p, {}) do
-      local r = Proxy.get (Proxy.sub (p, k), true)
+      local _, r = Proxy.apply (Proxy.sub (p, k), true) ()
       if getmetatable (r) == Reference then
         result [f (k)] = r
       else
