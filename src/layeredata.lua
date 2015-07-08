@@ -42,10 +42,10 @@ Proxy.keys = {
   refines  = "__refines__",
   checks   = "__checks__",
   referred = "__referred__",
+  label   = "__label__",
 }
 Proxy.specials = {
   default = "__default__",
-  label   = "__label__",
   meta    = "__meta__",
 }
 
@@ -417,7 +417,7 @@ function Proxy.apply (p, no_resolve)
       end
     end
     -- 2. Do not search in parents within special keys:
-    local special = keys_of (Proxy.keys, Proxy.specials)
+    local special = keys_of (Proxy.keys)
     for i = 1, #keys do
       local key = keys [i]
       if special [key] then
@@ -636,7 +636,7 @@ function Reference.resolve (reference, proxy)
       current = current [key]
     end
     while current do
-      if current [Proxy.specials.label] == reference.__from then
+      if current [Proxy.keys.label] == reference.__from then
         local rkeys = reference.__keys
         for i = 1, #rkeys do
           current = Proxy.sub (current, rkeys [i])
