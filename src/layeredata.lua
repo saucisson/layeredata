@@ -545,7 +545,7 @@ Proxy.ipairs = Proxy.__ipairs
 
 function Proxy.__pairs (proxy, except)
   assert (getmetatable (proxy) == Proxy)
-  local cache = Layer.caches.ipairs
+  local cache = Layer.caches.pairs
   if cache [proxy] then
     return coroutine.wrap (function ()
       for k, v in pairs (cache [proxy]) do
