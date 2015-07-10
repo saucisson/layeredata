@@ -32,35 +32,34 @@ IgnoreKeys.__mode        = "k"
 local IgnoreValues       = {}
 IgnoreValues.__mode      = "v"
 
--- How to apply __checks__?
--- 1. apply on modified object its __checks__,
--- 2. apply on parents,
--- 3. applied on references and their parents
-
-Proxy.keys = {
-  depends  = "__depends__",
-  refines  = "__refines__",
+Proxy.key = {
   checks   = "__checks__",
-  referred = "__referred__",
-  label   = "__label__",
+  default  = "__default__",
+  depends  = "__depends__",
+  label    = "__label__",
+  messages = "__messages__",
+  meta     = "__meta__",
+  refines  = "__refines__",
 }
-Proxy.specials = {
-  default = "__default__",
-  meta    = "__meta__",
+
+Proxy.special = {
+  normal    = "__normal__",
+  norefines = "__norefines__",
+  noparents = "__noparents__",
+}
+
+Proxy.key_type = {
+  [Proxy.key.checks  ] = Proxy.special.norefines,
+  [Proxy.key.default ] = Proxy.special.normal,
+  [Proxy.key.depends ] = Proxy.special.noparents,
+  [Proxy.key.label   ] = Proxy.special.noparents,
+  [Proxy.key.messages] = Proxy.special.norefines,
+  [Proxy.key.meta    ] = Proxy.special.normal,
+  [Proxy.key.refines ] = Proxy.special.noparents,
 }
 
 local function totypedstring (x)
   return tostring (x)
-end
-
-local function keys_of (...)
-  local special = {}
-  for _, keys in ipairs { ... } do
-    for _, k in pairs (keys) do
-      special [k] = true
-    end
-  end
-  return special
 end
 
 local unpack = table.unpack or unpack
@@ -92,9 +91,6 @@ function Layer.clear_caches ()
     len    = setmetatable ({}, IgnoreKeys),
   }
 end
-
--- Each layer contains a map:
--- referenced -> { reference = true, ... }
 
 function Layer.import (data, ref, seen)
   if not ref then
@@ -167,7 +163,6 @@ function Proxy.__new (t)
     __layer     = t,
     __memo      = t.__proxies,
     __parent    = false,
-    __writeable = true,
   }, Proxy)
 end
 
@@ -232,11 +227,41 @@ function Proxy.sub (proxy, key)
       __keys      = nkeys,
       __memo      = setmetatable ({}, IgnoreValues),
       __parent    = proxy,
-      __writeable = proxy.__writeable,
     }, Proxy)
     proxies [key] = found
   end
   return found
+end
+
+function Proxy.check (proxy)
+  local has_special = false
+  for i = 1, #proxy.__keys do
+    local special = Proxy.key_type [proxy.__keys [i]]
+    if special ~= nil and special ~= Proxy.special.normal then
+      has_special = true
+      break
+    end
+  end
+  if not has_special and not Proxy.within_check then
+    Proxy.within_check = true
+    local messages = Proxy.sub (proxy, Proxy.key.messages)
+    local checks   = Proxy.sub (proxy, Proxy.key.checks  )
+    if Proxy.apply (checks) (checks) and Proxy.apply (messages) (messages) == nil then
+      proxy [Proxy.key.messages] = {}
+    end
+    for k, f in Proxy.__pairs (checks) do
+      assert (type (f) == "function")
+      local check   = Proxy.sub (checks, k)
+      local message = f (proxy)
+      if messages [check] ~= message then
+        messages [check] = message
+      end
+    end
+    if Proxy.__pairs (messages) (messages) == nil then
+      proxy [Proxy.key.messages] = nil
+    end
+    Proxy.within_check = false
+  end
 end
 
 function Proxy.__index (proxy, key)
@@ -246,6 +271,7 @@ function Proxy.__index (proxy, key)
   if cache [proxy] ~= nil then
     return cache [proxy]
   end
+  Proxy.check (proxy)
   local _, c = Proxy.apply (proxy) (proxy)
   local result
   if getmetatable (c) == Proxy or type (c) ~= "table" then
@@ -259,7 +285,6 @@ end
 
 function Proxy.__newindex (proxy, key, value)
   assert (getmetatable (proxy) == Proxy)
-  assert (proxy.__writeable)
   assert (type (key) ~= "table" or getmetatable (key) == Proxy or getmetatable (key) == Reference)
   local layer = proxy.__layer
   proxy = Proxy.sub (proxy, key)
@@ -273,16 +298,19 @@ function Proxy.__newindex (proxy, key, value)
   end
   local current = layer.__data
   local keys    = p.__keys
+  local clear   = true
   for i = 1, #keys-1 do
     local k = keys [i]
+    clear = clear and k ~= Proxy.key.messages
     if current [k] == nil then
       current [k] = {}
     end
     current = current [k]
   end
   current [key] = value
-  Layer.clear_caches (proxy)
-  -- FIXME: run checks
+  if clear then
+    Layer.clear_caches (proxy)
+  end
 end
 
 function Proxy.replacewith (proxy, value)
@@ -360,7 +388,7 @@ Proxy.depends = c3.new {
   cache      = false,
   superclass = function (proxy)
     assert (getmetatable (proxy) == Proxy)
-    return proxy.__layer.__data [Proxy.keys.depends]
+    return proxy.__layer.__data [Proxy.key.depends]
   end,
 }
 
@@ -369,7 +397,7 @@ Proxy.refines = c3.new {
   superclass = function (proxy)
     assert (getmetatable (proxy) == Proxy)
     local result  = {}
-    local refines = proxy [Proxy.keys.refines]
+    local refines = proxy [Proxy.key.refines]
     if not refines then
       return result
     end
@@ -422,27 +450,28 @@ function Proxy.apply (p, no_resolve)
       end
     end
     -- 2. Do not search in parents within special keys:
-    local special = keys_of (Proxy.keys)
     for i = 1, #keys do
       local key = keys [i]
-      if special [key] then
+      if Proxy.key_type [key] == Proxy.special.noparents then
         return
       end
     end
     -- 3. Search in parents:
     local current = proxy
     for i = #keys, 0, -1 do
-      local refines = Proxy.refines (current)
-      for j = #refines-1, 1, -1 do
-        local refined = refines [j]
-        if not noback [refines [j]] then
-          local back = noback [refines [j]]
-          noback [refines [j]] = true
-          for k = i+1, #keys do
-            refined = Proxy.sub (refined, keys [k])
+      if Proxy.key_type [keys [i]] ~= Proxy.special.norefines then
+        local refines = Proxy.refines (current)
+        for j = #refines-1, 1, -1 do
+          local refined = refines [j]
+          if not noback [refines [j]] then
+            local back = noback [refines [j]]
+            noback [refines [j]] = true
+            for k = i+1, #keys do
+              refined = Proxy.sub (refined, keys [k])
+            end
+            perform (refined)
+            noback [refines [j]] = back
           end
-          perform (refined)
-          noback [refines [j]] = back
         end
       end
       current = current.__parent
@@ -451,11 +480,13 @@ function Proxy.apply (p, no_resolve)
     current = proxy.__parent
     for i = #keys-2, 0, -1 do
       current = current.__parent
-      local c = Proxy.sub (current, Proxy.specials.default)
-      for j = i+2, #keys do
-        c = Proxy.sub (c, keys [j])
+      if Proxy.key_type [keys [i]] == nil or Proxy.key_type [keys [i]] == Proxy.special.normal then
+        local c = Proxy.sub (current, Proxy.key.default)
+        for j = i+2, #keys do
+          c = Proxy.sub (c, keys [j])
+        end
+        perform (c)
       end
-      perform (c)
     end
   end
   return coroutine.wrap (function ()
@@ -523,14 +554,13 @@ function Proxy.__pairs (proxy, except)
     end)
   end
   local coroutine = coromake ()
-  except = except or keys_of (Proxy.keys, Proxy.specials)
   return coroutine.wrap (function ()
     local cached = {}
     for p, t in Proxy.apply (proxy) do
       if p == proxy then
         if type (t) == "table" then
           for k in pairs (t) do
-            if cached [k] == nil and except [k] == nil and proxy [k] ~= nil then
+            if cached [k] == nil and proxy [k] ~= nil then
               cached [k] = proxy [k]
               coroutine.yield (k, proxy [k])
             end
@@ -565,18 +595,23 @@ function Proxy.flatten (proxy)
     local result = {}
     equivalents [p] = result
     for k in Proxy.__pairs (p, {}) do
-      local _, r = Proxy.apply (Proxy.sub (p, k), true) ()
-      if getmetatable (r) == Reference then
-        result [f (k)] = r
-      else
-        result [f (k)] = f (p [k])
+      if k ~= Proxy.key.depends then
+        local _, r = Proxy.apply (Proxy.sub (p, k), true) ()
+        if getmetatable (r) == Reference then
+          result [f (k)] = r
+        else
+          result [f (k)] = f (p [k])
+        end
       end
     end
     return result
   end
+  Proxy.within_check = true
+  local result = f (proxy)
+  Proxy.within_check = false
   return Layer.__new {
     name = "flattened:" .. tostring (proxy.__layer.__name),
-    data = f (proxy),
+    data = result,
   }
 end
 
@@ -630,17 +665,16 @@ function Reference.resolve (reference, proxy)
     end
     return current
   else -- relative
-    local special = keys_of (Proxy.keys)
     local current = proxy.__layer.__root
     for i = 1, #proxy.__keys-1 do
       local key = proxy.__keys [i]
-      if special [key] then
+      if Proxy.key_type [key] ~= nil and Proxy.key_type [key] ~= Proxy.special.normal then
         break
       end
       current = current [key]
     end
     while current do
-      if current [Proxy.keys.label] == reference.__from then
+      if current [Proxy.key.label] == reference.__from then
         local rkeys = reference.__keys
         for i = 1, #rkeys do
           current = Proxy.sub (current, rkeys [i])
