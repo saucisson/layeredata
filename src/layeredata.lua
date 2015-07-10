@@ -83,6 +83,7 @@ function Layer.clear_caches ()
     pairs  = setmetatable ({}, IgnoreKeys),
     ipairs = setmetatable ({}, IgnoreKeys),
     len    = setmetatable ({}, IgnoreKeys),
+    check  = setmetatable ({}, IgnoreKeys),
   }
 end
 
@@ -228,6 +229,12 @@ function Proxy.sub (proxy, key)
 end
 
 function Proxy.check (proxy)
+  assert (getmetatable (proxy) == Proxy)
+  local cache = Layer.caches.check
+  if cache [proxy] then
+    return
+  end
+  cache [proxy] = true
   local has_special = false
   for i = 1, #proxy.__keys do
     local special = Proxy.key_type [proxy.__keys [i]]
@@ -236,25 +243,22 @@ function Proxy.check (proxy)
       break
     end
   end
-  if not has_special and not Proxy.within_check then
-    Proxy.within_check = true
+  if not has_special then
     local messages = Proxy.sub (proxy, Proxy.key.messages)
     local checks   = Proxy.sub (proxy, Proxy.key.checks  )
     if Proxy.apply (checks) (checks) and Proxy.apply (messages) (messages) == nil then
       proxy [Proxy.key.messages] = {}
     end
-    for k, f in Proxy.__pairs (checks) do
+    for _, f in Proxy.__pairs (checks) do
       assert (type (f) == "function")
-      local check   = Proxy.sub (checks, k)
-      local message = f (proxy)
-      if messages [check] ~= message then
-        messages [check] = message
+      local id, message = f (proxy)
+      if id ~= nil then
+        messages [id] = message
       end
     end
     if Proxy.__pairs (messages) (messages) == nil then
       proxy [Proxy.key.messages] = nil
     end
-    Proxy.within_check = false
   end
 end
 
@@ -265,12 +269,12 @@ function Proxy.__index (proxy, key)
   if cache [proxy] ~= nil then
     return cache [proxy]
   end
-  Proxy.check (proxy)
   local _, c = Proxy.apply (proxy) (proxy)
   local result
   if getmetatable (c) == Proxy or type (c) ~= "table" then
     result = c
   else
+    Proxy.check (proxy)
     result = proxy
   end
   cache [proxy] = result
@@ -301,9 +305,10 @@ function Proxy.__newindex (proxy, key, value)
     end
     current = current [k]
   end
+  clear = clear and keys [#keys] ~= Proxy.key.messages
   current [key] = value
   if clear then
-    Layer.clear_caches (proxy)
+    Layer.clear_caches ()
   end
 end
 
@@ -600,9 +605,7 @@ function Proxy.flatten (proxy)
     end
     return result
   end
-  Proxy.within_check = true
   local result = f (proxy)
-  Proxy.within_check = false
   return Layer.__new {
     name = "flattened:" .. tostring (proxy.__layer.__name),
     data = result,
