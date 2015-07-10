@@ -71,12 +71,6 @@ function Layer.__new (t)
     __data    = Layer.import (t.data or {}),
     __root    = false,
     __proxies = setmetatable ({}, IgnoreValues),
-    __caches  = {
-      index  = setmetatable ({}, IgnoreKeys),
-      pairs  = setmetatable ({}, IgnoreKeys),
-      ipairs = setmetatable ({}, IgnoreKeys),
-      len    = setmetatable ({}, IgnoreKeys),
-    },
   }, Layer)
   local proxy = Proxy.__new (layer)
   layer.__root = proxy
