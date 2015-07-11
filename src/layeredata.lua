@@ -17,6 +17,7 @@
 local coromake = require "coroutine.make"
 local c3       = require "c3"
 local serpent  = require "serpent"
+local yaml     = require "yaml"
 
 local Layer              = setmetatable ({}, {
   __tostring = function () return "Layer" end
@@ -205,6 +206,26 @@ function Proxy.dump (proxy, serialize)
     Reference.__serialize = Reference_serialize
   end
   return result
+end
+
+function Proxy.toyaml (proxy)
+  assert (getmetatable (proxy) == Proxy)
+  local dumped   = Proxy.dump (proxy, false)
+  local ok, data = serpent.load (dumped)
+  assert (ok)
+  local function f (t)
+    if type (t) ~= "table" then
+      return t
+    end
+    if #t == 1 then
+      return t [1]
+    end
+    for k, v in pairs (t) do
+      t [k] = f (v)
+    end
+    return t
+  end
+  return yaml.dump (f (data))
 end
 
 function Proxy.sub (proxy, key)
