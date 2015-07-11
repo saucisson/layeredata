@@ -19,6 +19,7 @@ dependencies = {
   "c3       >= 0",
   "coronest >= 0",
   "serpent  >= 0",
+  "yaml     >= 1",
 }
 
 build = {
