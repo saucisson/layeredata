@@ -25,6 +25,7 @@ dependencies = {
 build = {
   type    = "builtin",
   modules = {
-    ["layeredata"] = "src/layeredata.lua",
+    ["layeredata"     ] = "src/layeredata.lua",
+    ["layeredata.make"] = "src/layeredata/make.lua",
   },
 }
