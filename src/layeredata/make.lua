@@ -738,8 +738,9 @@ return function (special_keys)
     return table.concat (result, " ")
   end
 
-  Proxy.reference = Reference.new
+  Proxy.reference    = Reference.new
   Proxy.clear_caches = Layer.clear_caches
   Layer.clear_caches ()
+
   return Proxy
 end
