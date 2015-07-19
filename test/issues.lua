@@ -281,3 +281,22 @@ describe ("issue #15", function ()
     assert.are.equal (layer.a [Layer.reference "a"], 1)
   end)
 end)
+
+describe ("issue #16", function ()
+  it ("is fixed", function ()
+    local Layer = require "layeredata"
+    local a     = Layer.new { name = "a" }
+    local b     = Layer.new { name = "b" }
+    b.__depends__ = { a }
+    a.x = {
+      value = 1,
+    }
+    b.y = {
+      __refines__ = {
+        Layer.reference (false).x,
+      }
+    }
+    assert.are.equal (b.y.value, a.x.value)
+    assert.are.equal (a.x.value, 1)
+  end)
+end)
