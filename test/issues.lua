@@ -70,6 +70,24 @@ describe ("issue #5", function ()
         c = Layer.reference "x".a,
       },
     }
-    assert (layer.x.b.c == layer.x.a)
+    assert.are.equal (layer.x.b.c, layer.x.a)
+  end)
+end)
+
+describe ("issue #6", function ()
+  it ("is fixed", function ()
+    local Layer = require "layeredata"
+    local layer = Layer.new { name = "layer" }
+    layer.a = {
+      z = 1,
+    }
+    layer.x = {
+      __default__ = {
+        __refines__ = { layer.a },
+      },
+      b = {}
+    }
+    assert.are.equal (layer.x.b.z, layer.a.z)
+    assert.are.equal (layer.x.b.z, 1)
   end)
 end)
