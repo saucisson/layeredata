@@ -107,3 +107,18 @@ describe ("issue #7", function ()
     assert (Layer.dump (layer, true):match [[b%s*=%s*{]])
   end)
 end)
+
+describe ("issue #8", function ()
+  it ("is fixed", function ()
+    local Layer = require "layeredata"
+    local layer = Layer.new { name = "mylayer" }
+    layer.__label__ = "mylayer"
+    layer.root = {
+      x = { 1 }
+    }
+    layer.root.a = {
+      __refines__ = { Layer.reference "mylayer".root },
+    }
+    assert.are.equal (Layer.size (layer.root.a.x), 1)
+  end)
+end)
