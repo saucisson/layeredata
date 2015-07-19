@@ -122,3 +122,36 @@ describe ("issue #8", function ()
     assert.are.equal (Layer.size (layer.root.a.x), 1)
   end)
 end)
+
+describe ("issue #9", function ()
+  it ("is fixed", function ()
+    local Layer = require "layeredata"
+    local layer = Layer.new { name = "layer" }
+    layer.a = {
+      __checks__ = {
+        function (proxy)
+          if proxy.final and not proxy.value then
+            return "id", "message"
+          end
+        end
+      },
+    }
+    layer.b = {
+      final = true,
+      value = 3,
+      __refines__ = {
+        Layer.reference (false).a
+      },
+    }
+    layer.c = {
+      final = true,
+      __refines__ = {
+        Layer.reference (false).a
+      },
+    }
+    print (layer.a.__messages__)
+    print (layer.b.__messages__)
+    print (layer.c.__messages__)
+    print (Layer.dump (layer))
+  end)
+end)
