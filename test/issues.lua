@@ -300,3 +300,30 @@ describe ("issue #16", function ()
     assert.are.equal (a.x.value, 1)
   end)
 end)
+
+describe ("issue #17", function ()
+  it ("is fixed", function ()
+    local Layer = require "layeredata.make" {
+      checks   = "CHECKS",
+      default  = "DEFAULT",
+      depends  = "DEPENDS",
+      label    = "LABEL",
+      messages = "MESSAGES",
+      meta     = "META",
+      refines  = "REFINES",
+    }
+    local a     = Layer.new { name = "a" }
+    local b     = Layer.new { name = "b" }
+    b.DEPENDS = { a }
+    a.x = {
+      value = 1,
+    }
+    b.y = {
+      REFINES = {
+        Layer.reference (false).x,
+      }
+    }
+    assert.are.equal (b.y.value, a.x.value)
+    assert.are.equal (a.x.value, 1)
+  end)
+end)
