@@ -91,3 +91,19 @@ describe ("issue #6", function ()
     assert.are.equal (layer.x.b.z, 1)
   end)
 end)
+
+describe ("issue #7", function ()
+  it ("is fixed", function ()
+    local Layer = require "layeredata"
+    local layer = Layer.new { name = "layer" }
+    layer.x = {
+      __label__ = "x",
+      a = {
+        z = 1,
+      },
+      b = Layer.reference "x".a,
+    }
+    assert (Layer.dump (layer):match [[b%s*=%s*"x%s*->%s*%[a%]"]])
+    assert (Layer.dump (layer, true):match [[b%s*=%s*{]])
+  end)
+end)
