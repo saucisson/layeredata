@@ -149,9 +149,36 @@ describe ("issue #9", function ()
         Layer.reference (false).a
       },
     }
-    print (layer.a.__messages__)
-    print (layer.b.__messages__)
-    print (layer.c.__messages__)
-    print (Layer.dump (layer))
+    assert.is_nil     (layer.a.__messages__)
+    assert.is_nil     (layer.b.__messages__)
+    assert.is_not_nil (layer.c.__messages__)
+  end)
+end)
+
+describe ("issue #10", function ()
+  it ("is fixed", function ()
+    local Layer = require "layeredata"
+    local a = Layer.new { name = "a" }
+    local b = Layer.new { name = "b" }
+    local c = Layer.new { name = "c" }
+    a.__label__ = "a"
+    a.x = {
+      value = 1,
+    }
+    b.__depends__ = { a }
+    b.y = {
+      __refines__ = { Layer.reference "a".x }
+    }
+    c.__depends__ = { b }
+    c.z = {
+      __refines__ = { Layer.reference "a".y }
+    }
+    local d = Layer.flatten (c)
+    assert.are.equal (d.x.value, d.y.value)
+    assert.are.equal (d.y.value, d.z.value)
+    assert.are.equal (d.z.value, 1)
+    assert.are.equal (d.z.value, c.z.value)
+    assert.are.equal (c.z.value, b.y.value)
+    assert.are.equal (b.y.value, a.x.value)
   end)
 end)
