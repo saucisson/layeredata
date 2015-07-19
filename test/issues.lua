@@ -224,3 +224,24 @@ describe ("issue #12", function ()
     end)
   end)
 end)
+
+describe ("issue #13", function ()
+  it ("is fixed", function ()
+    local Layer = require "layeredata"
+    local layer = Layer.new { name = "layer" }
+    layer.a = {
+      __label__ = "a",
+      x = { value = 1 },
+      collection = {
+        __default__ = {
+          __refines__ = {
+            Layer.reference "a".x,
+          }
+        }
+        e = {},
+      }
+    }
+    assert.are.equal (layer.a.collection.e.value, layer.a.x.value)
+    assert.are.equal (layer.a.collection.e.value, 1)
+  end)
+end)
