@@ -260,49 +260,62 @@ return function (special_keys)
       return
     end
     cache [proxy] = true
-    local has_special = false
     for i = 1, #proxy.__keys do
       local special = Proxy.key_type [proxy.__keys [i]]
       if special ~= nil and special ~= Proxy.special.normal then
-        has_special = true
-        break
+        return
       end
     end
-    if not has_special then
-      local messages = Proxy.sub (proxy, Proxy.key.messages)
-      local checks   = Proxy.sub (proxy, Proxy.key.checks  )
-      if Proxy.apply (checks) (checks) and Proxy.apply (messages) (messages) == nil then
-        proxy [Proxy.key.messages] = {}
+    local checks = proxy [Proxy.key.checks  ]
+    if not checks then
+      return
+    end
+    local messages = proxy [Proxy.key.messages]
+    if not messages then
+      proxy [Proxy.key.messages] = {}
+    end
+    for _, f in Proxy.__pairs (checks) do
+      assert (type (f) == "function")
+      local id, message = f (proxy)
+      if id ~= nil then
+        messages [id] = message
       end
-      for _, f in Proxy.__pairs (checks) do
-        assert (type (f) == "function")
-        local id, message = f (proxy)
-        if id ~= nil then
-          messages [id] = message
-        end
-      end
-      if Proxy.__pairs (messages) (messages) == nil then
-        proxy [Proxy.key.messages] = nil
-      end
+    end
+    if Proxy.__pairs (messages) (messages) == nil then
+      proxy [Proxy.key.messages] = nil
     end
   end
+
+  --local indent = ""
 
   function Proxy.__index (proxy, key)
     assert (getmetatable (proxy) == Proxy)
     proxy = Proxy.sub (proxy, key)
+--    print (">", indent .. tostring (proxy))
+--    indent = indent .. "  "
     local cache = Layer.caches.index
     if cache [proxy] ~= nil then
+--      indent = indent:sub (1, #indent-2)
+--      print ("<", indent .. tostring (cache [proxy]))
       return cache [proxy]
     end
-    local _, c = Proxy.apply (proxy) (proxy)
     local result
-    if getmetatable (c) == Proxy or type (c) ~= "table" then
-      result = c
-    else
-      Proxy.check (proxy)
-      result = proxy
+    while true do
+      local p, c = Proxy.apply (proxy) (proxy)
+      if getmetatable (c) == Proxy then
+        proxy = c
+      elseif type (c) ~= "table" then
+        result = c
+        break
+      else
+        Proxy.check (proxy)
+        result = proxy
+        break
+      end
     end
     cache [proxy] = result
+--    indent = indent:sub (1, #indent-2)
+--    print ("<", indent .. tostring (result))
     return result
   end
 
@@ -451,20 +464,11 @@ return function (special_keys)
         local current = layers [i].__layer.__data
         for j = 1, #keys do
           current = current [keys [j]]
-          if getmetatable (current) == Reference then
-            if not (j == #keys and no_resolve) then
-              local referenced = Reference.resolve (current, proxy)
-              if not referenced then
-                current = nil
-                break
-              end
-              for k = j+1, #keys do
-                referenced = Proxy.sub (referenced, keys [k])
-              end
-              return perform (referenced)
-            end
-          end
-          if j ~= #keys and type (current) ~= "table" then
+          if getmetatable (current) == Reference and not no_resolve then
+            assert (j == #keys)
+            current = Reference.resolve (current, proxy)
+            break
+          elseif j ~= #keys and type (current) ~= "table" then
             current = nil
             break
           end
