@@ -269,3 +269,15 @@ describe ("issue #14", function ()
     assert.are.equal (layer.a.x.value, 1)
   end)
 end)
+
+describe ("issue #15", function ()
+  it ("is fixed", function ()
+    local Layer = require "layeredata"
+    local layer = Layer.new { name = "layer" }
+    layer.a = {
+      __label__ = "a",
+      [Layer.reference "a"] = 1,
+    }
+    assert.are.equal (layer.a [Layer.reference "a"], 1)
+  end)
+end)
