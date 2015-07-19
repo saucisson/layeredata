@@ -273,6 +273,7 @@ return function (special_keys)
     local messages = proxy [Proxy.key.messages]
     if not messages then
       proxy [Proxy.key.messages] = {}
+      messages = proxy [Proxy.key.messages]
     end
     for _, f in Proxy.__pairs (checks) do
       assert (type (f) == "function")
@@ -343,7 +344,10 @@ return function (special_keys)
       end
       current = current [k]
     end
-    clear = clear and keys [#keys] ~= Proxy.key.messages
+    clear = false
+    for i = 1, #keys do
+      clear = clear or keys [i] == Proxy.key.messages
+    end
     current [key] = value
     if clear then
       Layer.clear_caches ()
