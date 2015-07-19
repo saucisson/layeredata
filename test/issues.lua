@@ -237,7 +237,7 @@ describe ("issue #13", function ()
           __refines__ = {
             Layer.reference "a".x,
           }
-        }
+        },
         e = {},
       }
     }
