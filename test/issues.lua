@@ -203,3 +203,24 @@ describe ("issue #11", function ()
     assert.are.equal (flat.a.x.z.value, 1)
   end)
 end)
+
+describe ("issue #12", function ()
+  it ("is fixed", function ()
+    local Layer = require "layeredata"
+    local layer = Layer.new { name = "layer" }
+    layer.a = {
+      __label__ = "a",
+      x = {
+        z = {
+          value = 1,
+        },
+      },
+      y = {
+        __refines__ = { Layer.reference "a".x }
+      }
+    }
+    assert.has.no.error (function ()
+      Layer.toyaml (layer)
+    end)
+  end)
+end)
