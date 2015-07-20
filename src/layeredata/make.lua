@@ -3,7 +3,7 @@ local c3       = require "c3"
 local serpent  = require "serpent"
 local yaml     = require "yaml"
 
-return function (special_keys)
+return function (special_keys, debug)
   assert (special_keys == nil or type (special_keys) == "table")
   special_keys = special_keys or {}
 
@@ -63,9 +63,9 @@ return function (special_keys)
     [Proxy.key.refines ] = Proxy.special.noparents,
   }
 
-  local function totypedstring (x)
-    return tostring (x)
-  end
+  Proxy.tag = {
+    null  = {},
+  }
 
   local unpack = table.unpack or unpack
 
@@ -82,7 +82,7 @@ return function (special_keys)
     return proxy
   end
 
-  function Layer.clear_caches ()
+  function Layer.clear_caches (proxy)
     Layer.caches = {
       index  = setmetatable ({}, IgnoreKeys),
       pairs  = setmetatable ({}, IgnoreKeys),
@@ -153,16 +153,17 @@ return function (special_keys)
 
   function Layer.__tostring (layer)
     assert (getmetatable (layer) == Layer)
-    return "layer:" .. totypedstring (layer.__name)
+    return "layer:" .. tostring (layer.__name)
   end
 
   function Proxy.__new (t)
     assert (getmetatable (t) == Layer)
     return setmetatable ({
-      __keys      = {},
-      __layer     = t,
-      __memo      = t.__proxies,
-      __parent    = false,
+      __keys   = {},
+      __layer  = t,
+      __memo   = t.__proxies,
+      __parent = false,
+      __cache  = true,
     }, Proxy)
   end
 
@@ -179,11 +180,11 @@ return function (special_keys)
     assert (getmetatable (proxy) == Proxy)
     local result = {}
     result [1] = proxy.__layer
-             and "<" .. totypedstring (proxy.__layer.__name) .. ">"
+             and "<" .. tostring (proxy.__layer.__name) .. ">"
               or "<anonymous layer>"
     local keys = proxy.__keys
     for i = 1, #keys do
-      result [i+1] = "[" .. totypedstring (keys [i]) .. "]"
+      result [i+1] = "[" .. tostring (keys [i]) .. "]"
     end
     return table.concat (result, " ")
   end
@@ -237,16 +238,20 @@ return function (special_keys)
     local proxies = proxy.__memo
     local found   = proxies [key]
     if not found then
+      local cache = true
       local nkeys = {}
       for i = 1, #proxy.__keys do
         nkeys [i] = proxy.__keys [i]
+        cache = cache and nkeys [i] ~= Proxy.key.messages
       end
       nkeys [#nkeys+1] = key
+      cache = cache and key ~= Proxy.key.messages
       found = setmetatable ({
         __layer     = proxy.__layer,
         __keys      = nkeys,
         __memo      = setmetatable ({}, IgnoreValues),
         __parent    = proxy,
+        __cache     = cache,
       }, Proxy)
       proxies [key] = found
     end
@@ -287,18 +292,26 @@ return function (special_keys)
     end
   end
 
-  --local indent = ""
+  local indent
+  if debug then
+    indent = ""
+  end
 
   function Proxy.__index (proxy, key)
     assert (getmetatable (proxy) == Proxy)
     proxy = Proxy.sub (proxy, key)
---    print (">", indent .. tostring (proxy))
---    indent = indent .. "  "
-    local cache = Layer.caches.index
-    if cache [proxy] ~= nil then
---      indent = indent:sub (1, #indent-2)
---      print ("<", indent .. tostring (cache [proxy]))
-      return cache [proxy]
+    if proxy.__cache then
+      local cache  = Layer.caches.index
+      local cached = cache [proxy]
+      if cached == Proxy.tag.null then
+        return nil
+      elseif cached ~= nil then
+        return cached
+      end
+    end
+    if indent then
+      print (">", indent .. tostring (proxy))
+      indent = indent .. "  "
     end
     local result
     while true do
@@ -314,9 +327,18 @@ return function (special_keys)
         break
       end
     end
-    cache [proxy] = result
---    indent = indent:sub (1, #indent-2)
---    print ("<", indent .. tostring (result))
+    if proxy.__cache then
+      local cache = Layer.caches.index
+      if result == nil then
+        cache [proxy] = Proxy.tag.null
+      else
+        cache [proxy] = result
+      end
+    end
+    if indent then
+      indent = indent:sub (1, #indent-2)
+--      print ("<", proxy.__cache, indent .. tostring (proxy) .. " = " .. tostring (result))
+    end
     return result
   end
 
@@ -335,22 +357,16 @@ return function (special_keys)
     end
     local current = layer.__data
     local keys    = p.__keys
-    local clear   = true
     for i = 1, #keys-1 do
       local k = keys [i]
-      clear = clear and k ~= Proxy.key.messages
       if current [k] == nil then
         current [k] = {}
       end
       current = current [k]
     end
-    clear = false
-    for i = 1, #keys do
-      clear = clear or keys [i] == Proxy.key.messages
-    end
     current [key] = value
-    if clear then
-      Layer.clear_caches ()
+    if proxy.__cache then
+      Layer.clear_caches (proxy)
     end
   end
 
@@ -733,7 +749,7 @@ return function (special_keys)
     result [2] = "->"
     local keys = reference.__keys
     for i = 1, #keys do
-      result [i+2] = "[" .. totypedstring (keys [i]) .. "]"
+      result [i+2] = "[" .. tostring (keys [i]) .. "]"
     end
     return table.concat (result, " ")
   end

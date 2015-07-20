@@ -2,7 +2,7 @@ require 'busted.runner'()
 
 local assert   = require "luassert"
 
-describe ("issue #1", function ()
+describe ("issue #1 #now", function ()
   it ("is fixed", function ()
     local Layer = require "layeredata"
     local layer = Layer.new { name = "layer" }
@@ -15,6 +15,7 @@ describe ("issue #1", function ()
         z = 1,
       },
     }
+    print (layer.x.z)
     assert.are.equal (layer.x.z, 1)
     assert.is_nil    (layer.x.a)
   end)
@@ -339,5 +340,73 @@ describe ("issue #18", function ()
     }
     assert.are.equal (layer.a.y.value, layer.a.x.value)
     assert.are.equal (layer.a.y.value, 1)
+  end)
+end)
+
+describe ("issue #19", function ()
+  it ("is fixed", function ()
+    local Layer = require "layeredata.make" ({}, false)
+    local layer = Layer.new { name = "record" }
+    local model = Layer.new { name = "record instance" }
+    local _     = Layer.reference "record_model"
+    local root  = Layer.reference (false)
+
+    layer.__meta__ = {
+      record = {
+        __label__ = "record",
+        __meta__ = {
+          __tags__ = {},
+        },
+
+        __checks__ = {
+          check_tags = function (proxy)
+            local message = ""
+            local tags = proxy.__meta__.__tags__
+            for tag, value in Layer.pairs(tags) do
+              if( value["__value_type__"]      ~= nil or
+                  value["__value_container__"] ~= nil ) then
+
+                if (proxy[tag] == nil) then
+                  message = message .. "Key '" .. tostring(tag) .. "' is missing. "
+
+                elseif (value["__value_type__"] ~= nil and
+                        type(proxy[tag]) ~= type(value["__value_type__"])) then
+                  message = message .. "Type of " .. tostring(tag) .. "'s value is wrong. "
+
+                elseif(value["__value_container__"] ~= nil) then
+                  for k, v in Layer.pairs(value["__value_container__"]) do
+                    print(k, v)
+                  end
+                end
+              end
+            end
+
+            if (message ~= "") then
+              return "check_tags", message
+            end
+          end,
+        },
+      },
+    }
+
+    model.__depends__ = {
+      layer,
+    }
+
+    model.model = {
+      __label__ = "record_model",
+
+      __refines__ = {
+        root.__meta__.record,
+      },
+      __meta__ = {
+        __tags__ = {
+          name = { __value_type__ = "string" },
+        },
+      },
+      name = "model",
+    }
+
+    local r = Layer.dump (Layer.flatten (model))
   end)
 end)
