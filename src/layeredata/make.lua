@@ -532,7 +532,15 @@ return function (special_keys, debug)
         end
         current = current.__parent
       end
-      -- 4. Search default:
+      -- 4. Do not search in default within special keys:
+      -- FIXME: not sure it is a valid optimization!
+      for i = 1, #keys do
+        local key = keys [i]
+        if key == Proxy.key.default then
+          return
+        end
+      end
+      -- 5. Search default:
       current = proxy.__parent
       for i = #keys-2, 0, -1 do
         current = current.__parent
