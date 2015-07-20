@@ -307,6 +307,7 @@ return function (special_keys, debug)
   function Proxy.__index (proxy, key)
     assert (getmetatable (proxy) == Proxy)
     proxy = Proxy.sub (proxy, key)
+    local cproxy = proxy
     if proxy.__cache then
       local cache  = Layer.caches.index
       local cached = cache [proxy]
@@ -337,9 +338,9 @@ return function (special_keys, debug)
     if proxy.__cache then
       local cache = Layer.caches.index
       if result == nil then
-        cache [proxy] = Proxy.tag.null
+        cache [cproxy] = Proxy.tag.null
       else
-        cache [proxy] = result
+        cache [cproxy] = result
       end
     end
     if indent then
