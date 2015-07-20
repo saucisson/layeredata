@@ -322,7 +322,7 @@ return function (special_keys, debug)
     end
     local result
     while true do
-      local p, c = Proxy.apply (proxy) (proxy)
+      local _, c = Proxy.apply (proxy) (proxy)
       if getmetatable (c) == Proxy then
         proxy = c
       elseif type (c) ~= "table" then
