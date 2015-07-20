@@ -83,6 +83,9 @@ return function (special_keys, debug)
   end
 
   function Layer.clear_caches (proxy)
+    if debug then
+      print ("Clear Caches:", proxy)
+    end
     Layer.caches = {
       index  = setmetatable ({}, IgnoreKeys),
       pairs  = setmetatable ({}, IgnoreKeys),
