@@ -32,10 +32,14 @@ return function (special_keys, debug)
   local Reference          = setmetatable ({}, {
     __tostring = function () return "Reference" end
   })
-  local IgnoreKeys         = {}
-  IgnoreKeys.__mode        = "k"
-  local IgnoreValues       = {}
-  IgnoreValues.__mode      = "v"
+  local IgnoreKeys = {}
+  if not debug then
+    IgnoreKeys.__mode = "k"
+  end
+  local IgnoreValues = {}
+  if not debug then
+    IgnoreValues.__mode = "v"
+  end
 
   Proxy.key = {
     checks   = special_keys.checks   or "__checks__",
