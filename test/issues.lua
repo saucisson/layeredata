@@ -15,7 +15,6 @@ describe ("issue #1 #now", function ()
         z = 1,
       },
     }
-    print (layer.x.z)
     assert.are.equal (layer.x.z, 1)
     assert.is_nil    (layer.x.a)
   end)
