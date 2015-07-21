@@ -7,22 +7,6 @@ return function (special_keys, debug)
   assert (special_keys == nil or type (special_keys) == "table")
   special_keys = special_keys or {}
 
-  -- Examples
-  -- ========
-  --
-  --    > Layer = require "layeredata"
-  --    > a = Layer.new { name = "a" }
-  --    > b = Layer.new { name = "b" }
-  --    > a.x = 1
-  --    > a.y = 2
-  --    > b.__depends__ = { a }
-  --    > b.x = 3
-  --    > b.z = 4
-  --    > = a.x, a.y, a.z
-  --    1, 2, nil
-  --    > = b.x, b.y, b.z
-  --    3, 2, 4
-
   local Layer              = setmetatable ({}, {
     __tostring = function () return "Layer" end
   })
