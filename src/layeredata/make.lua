@@ -90,6 +90,8 @@ return function (special_keys, debug)
     if debug then
       print ("Clear Caches:", proxy)
     end
+    Proxy.refines:clear ()
+    Proxy.depends:clear ()
     Layer.caches = {
       index  = setmetatable ({}, IgnoreKeys),
       pairs  = setmetatable ({}, IgnoreKeys),
@@ -450,7 +452,6 @@ return function (special_keys, debug)
   end
 
   Proxy.depends = c3.new {
-    cache      = false,
     superclass = function (proxy)
       assert (getmetatable (proxy) == Proxy)
       return proxy.__layer.__data [Proxy.key.depends]
@@ -458,7 +459,6 @@ return function (special_keys, debug)
   }
 
   Proxy.refines = c3.new {
-    cache      = false,
     superclass = function (proxy)
       assert (getmetatable (proxy) == Proxy)
       local result  = {}
