@@ -28,7 +28,7 @@ return function (special_keys, debug)
   Proxy.key = {
     checks   = special_keys.checks   or "__checks__",
     default  = special_keys.default  or "__default__",
-    label    = special_keys.label    or "__label__",
+    labels   = special_keys.labels   or "__labels__",
     messages = special_keys.messages or "__messages__",
     meta     = special_keys.meta     or "__meta__",
     refines  = special_keys.refines  or "__refines__",
@@ -37,7 +37,7 @@ return function (special_keys, debug)
   Proxy.nocheck = {
     [Proxy.key.checks  ] = true,
     [Proxy.key.default ] = true,
-    [Proxy.key.label   ] = true,
+    [Proxy.key.labels  ] = true,
     [Proxy.key.messages] = true,
     [Proxy.key.refines ] = true,
   }
@@ -45,7 +45,7 @@ return function (special_keys, debug)
   Proxy.nodefault = {
     [Proxy.key.checks  ] = true,
     [Proxy.key.default ] = true,
-    [Proxy.key.label   ] = true,
+    [Proxy.key.labels  ] = true,
     [Proxy.key.meta    ] = true,
     [Proxy.key.messages] = true,
     [Proxy.key.refines ] = true,
@@ -53,7 +53,7 @@ return function (special_keys, debug)
 
   Proxy.norefines = {
     [Proxy.key.checks  ] = true,
-    [Proxy.key.label   ] = true,
+    [Proxy.key.labels  ] = true,
     [Proxy.key.messages] = true,
     [Proxy.key.refines ] = true,
   }
@@ -61,7 +61,7 @@ return function (special_keys, debug)
   Proxy.noresolve = {
     [Proxy.key.checks  ] = true,
     [Proxy.key.default ] = true,
-    [Proxy.key.label   ] = true,
+    [Proxy.key.labels  ] = true,
     [Proxy.key.messages] = true,
     [Proxy.key.refines ] = true,
   }
@@ -760,7 +760,8 @@ return function (special_keys, debug)
         current = current [key]
       end
       while current do
-        if current [Proxy.key.label] == reference.__from then
+        if  current [Proxy.key.labels]
+        and current [Proxy.key.labels] [reference.__from] then
           local rkeys = reference.__keys
           for i = 1, #rkeys do
             current = Proxy.sub (current, rkeys [i])

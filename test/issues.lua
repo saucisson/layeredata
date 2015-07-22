@@ -7,7 +7,7 @@ describe ("issue #1", function ()
   it ("is fixed", function ()
     local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
-    layer.__label__ = "root"
+    layer.__labels__ = { root }
     layer.x = {
       __refines__ = {
         Layer.reference "root".x.y,
@@ -27,7 +27,7 @@ describe ("issue #2", function ()
     local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.x = {
-      __label__ = "x",
+      __labels__ = { x = true },
       y = Layer.reference "x",
     }
     assert.are.equal (layer.x, layer.x.y)
@@ -52,7 +52,7 @@ describe ("issue #4", function ()
     local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.a = {
-      __label__ = "a",
+      __labels__ = { a = true },
       b = Layer.reference "a".c,
       c = 1,
     }
@@ -66,7 +66,7 @@ describe ("issue #5", function ()
     local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.x = {
-      __label__ = "x",
+      __labels__ = { x = true },
       a = {},
       b = {
         c = Layer.reference "x".a,
@@ -99,7 +99,7 @@ describe ("issue #7", function ()
     local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.x = {
-      __label__ = "x",
+      __labels__ = { x = true },
       a = {
         z = 1,
       },
@@ -114,7 +114,7 @@ describe ("issue #8", function ()
   it ("is fixed", function ()
     local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "mylayer" }
-    layer.__label__ = "mylayer"
+    layer.__labels__ = { mylayer = true }
     layer.root = {
       x = { 1 }
     }
@@ -163,7 +163,7 @@ describe ("issue #10", function ()
     local a = Layer.new { name = "a" }
     local b = Layer.new { name = "b" }
     local c = Layer.new { name = "c" }
-    a.__label__ = "a"
+    a.__labels__ = { a = true }
     a.x = {
       value = 1,
     }
@@ -190,7 +190,7 @@ describe ("issue #11", function ()
     local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.a = {
-      __label__ = "a",
+      __labels__ = { a = true },
       x = {
         z = {
           value = 1,
@@ -211,7 +211,7 @@ describe ("issue #12", function ()
     local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.a = {
-      __label__ = "a",
+      __labels__ = { a = true },
       x = {
         z = {
           value = 1,
@@ -232,7 +232,7 @@ describe ("issue #13", function ()
     local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.a = {
-      __label__ = "a",
+      __labels__ = { a = true },
       x = { value = 1 },
       collection = {
         __default__ = {
@@ -253,7 +253,7 @@ describe ("issue #14", function ()
     local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.a = {
-      __label__ = "a",
+      __labels__ = { a = true },
       x = { value = 1 },
       y = {
         __refines__ = {
@@ -277,7 +277,7 @@ describe ("issue #15", function ()
     local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.a = {
-      __label__ = "a",
+      __labels__ = { a = true },
       [Layer.reference "a"] = 1,
     }
     assert.are.equal (layer.a [Layer.reference "a"], 1)
@@ -333,7 +333,7 @@ describe ("issue #18", function ()
     local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { layer = "layer" }
     layer.a = {
-      __label__ = "a",
+      __labels__ = { a = true },
       x = { value = 1 },
       y = Layer.reference "a".x,
     }
@@ -352,11 +352,10 @@ describe ("issue #19", function ()
 
     layer.__meta__ = {
       record = {
-        __label__ = "record",
+        __labels__ = { record = true },
         __meta__ = {
           __tags__ = {},
         },
-
         __checks__ = {
           check_tags = function (proxy)
             local message = ""
@@ -364,14 +363,11 @@ describe ("issue #19", function ()
             for tag, value in Layer.pairs(tags) do
               if( value["__value_type__"]      ~= nil or
                   value["__value_container__"] ~= nil ) then
-
                 if (proxy[tag] == nil) then
                   message = message .. "Key '" .. tostring(tag) .. "' is missing. "
-
                 elseif (value["__value_type__"] ~= nil and
                         type(proxy[tag]) ~= type(value["__value_type__"])) then
                   message = message .. "Type of " .. tostring(tag) .. "'s value is wrong. "
-
                 elseif(value["__value_container__"] ~= nil) then
                   for k, v in Layer.pairs(value["__value_container__"]) do
                     print(k, v)
@@ -379,7 +375,6 @@ describe ("issue #19", function ()
                 end
               end
             end
-
             if (message ~= "") then
               return "check_tags", message
             end
@@ -387,14 +382,11 @@ describe ("issue #19", function ()
         },
       },
     }
-
     model.__refines__ = {
       layer,
     }
-
     model.model = {
-      __label__ = "record_model",
-
+      __labels__ = { record_model = true },
       __refines__ = {
         root.__meta__.record,
       },
@@ -405,7 +397,6 @@ describe ("issue #19", function ()
       },
       name = "model",
     }
-
     local r = Layer.dump (Layer.flatten (model))
   end)
 end)
