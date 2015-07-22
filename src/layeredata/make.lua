@@ -30,6 +30,7 @@ return function (special_keys, debug)
     default  = special_keys.default  or "__default__",
     label    = special_keys.label    or "__label__",
     messages = special_keys.messages or "__messages__",
+    meta     = special_keys.meta     or "__meta__",
     refines  = special_keys.refines  or "__refines__",
   }
 
@@ -45,6 +46,7 @@ return function (special_keys, debug)
     [Proxy.key.checks  ] = true,
     [Proxy.key.default ] = true,
     [Proxy.key.label   ] = true,
+    [Proxy.key.meta    ] = true,
     [Proxy.key.messages] = true,
     [Proxy.key.refines ] = true,
   }
@@ -645,7 +647,7 @@ return function (special_keys, debug)
         if p == proxy then
           if type (t) == "table" then
             for k in pairs (t) do
-              if cached [k] == nil and proxy [k] ~= nil then
+              if k~= Proxy.key.meta and cached [k] == nil and proxy [k] ~= nil then
                 cached [k] = proxy [k]
                 coroutine.yield (k, proxy [k])
               end

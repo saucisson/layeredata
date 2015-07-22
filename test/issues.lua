@@ -409,3 +409,25 @@ describe ("issue #19", function ()
     local r = Layer.dump (Layer.flatten (model))
   end)
 end)
+
+describe ("issue #20", function ()
+  it ("is fixed", function ()
+    local Layer = require "layeredata.make" (nil, false)
+    local layer = Layer.new { layer = "layer" }
+    layer.a = {
+      x = 1,
+      y = 2,
+      __meta__    = { z = 3 },
+      __default__ = { v = 0 },
+    }
+    local res = {}
+    for k, v in Layer.pairs (layer.a) do
+      res [k] = v
+    end
+    assert.are.equal (res.x, 1)
+    assert.are.equal (res.y, 2)
+    assert.is_nil    (res.__meta__)
+    assert.are.equal (layer.a.__meta__.z, 3)
+    assert.is_nil    (layer.a.__meta__.v)
+  end)
+end)
