@@ -5,7 +5,7 @@ local assert   = require "luassert"
 --[==[
 describe ("issue #1", function ()
   it ("is fixed", function ()
-    local Layer = require "layeredata"
+    local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.__label__ = "root"
     layer.x = {
@@ -24,7 +24,7 @@ end)
 
 describe ("issue #2", function ()
   it ("is fixed", function ()
-    local Layer = require "layeredata"
+    local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.x = {
       __label__ = "x",
@@ -37,7 +37,7 @@ end)
 
 describe ("issue #3", function ()
   it ("is updated and fixed", function ()
-    local Layer = require "layeredata"
+    local Layer = require "layeredata.make" (nil, false)
     local back  = Layer.new { name = "back" }
     local front = Layer.new { name = "front" }
     front.__depends__ = { back }
@@ -49,7 +49,7 @@ end)
 
 describe ("issue #4", function ()
   it ("is fixed", function ()
-    local Layer = require "layeredata"
+    local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.a = {
       __label__ = "a",
@@ -63,7 +63,7 @@ end)
 
 describe ("issue #5", function ()
   it ("is fixed", function ()
-    local Layer = require "layeredata"
+    local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.x = {
       __label__ = "x",
@@ -78,7 +78,7 @@ end)
 
 describe ("issue #6", function ()
   it ("is fixed", function ()
-    local Layer = require "layeredata"
+    local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.a = {
       z = 1,
@@ -96,7 +96,7 @@ end)
 
 describe ("issue #7", function ()
   it ("is fixed", function ()
-    local Layer = require "layeredata"
+    local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.x = {
       __label__ = "x",
@@ -112,7 +112,7 @@ end)
 
 describe ("issue #8", function ()
   it ("is fixed", function ()
-    local Layer = require "layeredata"
+    local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "mylayer" }
     layer.__label__ = "mylayer"
     layer.root = {
@@ -127,7 +127,7 @@ end)
 
 describe ("issue #9", function ()
   it ("is fixed", function ()
-    local Layer = require "layeredata"
+    local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.a = {
       __checks__ = {
@@ -159,7 +159,7 @@ end)
 
 describe ("issue #10", function ()
   it ("is fixed", function ()
-    local Layer = require "layeredata"
+    local Layer = require "layeredata.make" (nil, false)
     local a = Layer.new { name = "a" }
     local b = Layer.new { name = "b" }
     local c = Layer.new { name = "c" }
@@ -187,7 +187,7 @@ end)
 
 describe ("issue #11", function ()
   it ("is fixed", function ()
-    local Layer = require "layeredata"
+    local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.a = {
       __label__ = "a",
@@ -208,7 +208,7 @@ end)
 
 describe ("issue #12", function ()
   it ("is fixed", function ()
-    local Layer = require "layeredata"
+    local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.a = {
       __label__ = "a",
@@ -229,7 +229,7 @@ end)
 
 describe ("issue #13", function ()
   it ("is fixed", function ()
-    local Layer = require "layeredata"
+    local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.a = {
       __label__ = "a",
@@ -250,7 +250,7 @@ end)
 
 describe ("issue #14", function ()
   it ("is fixed", function ()
-    local Layer = require "layeredata"
+    local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.a = {
       __label__ = "a",
@@ -274,7 +274,7 @@ end)
 
 describe ("issue #15", function ()
   it ("is fixed", function ()
-    local Layer = require "layeredata"
+    local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { name = "layer" }
     layer.a = {
       __label__ = "a",
@@ -286,7 +286,7 @@ end)
 
 describe ("issue #16", function ()
   it ("is fixed", function ()
-    local Layer = require "layeredata"
+    local Layer = require "layeredata.make" (nil, false)
     local a     = Layer.new { name = "a" }
     local b     = Layer.new { name = "b" }
     b.__depends__ = { a }
@@ -305,7 +305,7 @@ end)
 
 describe ("issue #17", function ()
   it ("is fixed", function ()
-    local Layer = require "layeredata.make" {
+    local Layer = require "layeredata.make" ({
       checks   = "CHECKS",
       default  = "DEFAULT",
       depends  = "DEPENDS",
@@ -313,7 +313,7 @@ describe ("issue #17", function ()
       messages = "MESSAGES",
       meta     = "META",
       refines  = "REFINES",
-    }
+    }, false)
     local a     = Layer.new { name = "a" }
     local b     = Layer.new { name = "b" }
     b.DEPENDS = { a }
@@ -332,7 +332,7 @@ end)
 
 describe ("issue #18", function ()
   it ("is fixed", function ()
-    local Layer = require "layeredata"
+    local Layer = require "layeredata.make" (nil, false)
     local layer = Layer.new { layer = "layer" }
     layer.a = {
       __label__ = "a",
