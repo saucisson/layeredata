@@ -213,7 +213,7 @@ return function (special_keys, debug)
   function Proxy.toyaml (proxy)
     assert (getmetatable (proxy) == Proxy)
     local dumped   = Proxy.dump (proxy, false)
-    local ok, data = serpent.load (dumped)
+    local ok, data = serpent.load (dumped, { safe = false })
     assert (ok)
     local function f (t)
       if type (t) ~= "table" then
