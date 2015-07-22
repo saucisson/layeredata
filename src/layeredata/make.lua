@@ -215,8 +215,27 @@ return function (special_keys, debug)
     local dumped   = Proxy.dump (proxy, false)
     local ok, data = serpent.load (dumped, { safe = false })
     assert (ok)
+    local bodies = {}
+    local function get_body (t)
+      if bodies [t] then
+        return bodies [t]
+      end
+      local result = t
+      local info = _G.debug.getinfo (t)
+      if info and info.what == "Lua" then
+        result = info.source ..
+                 " [" .. tostring (info.linedefined) ..
+                 ".." .. tostring (info.lastlinedefined) ..
+                  "]"
+      end
+      bodies [t] = result
+      return result
+    end
+
     local function f (t)
-      if type (t) ~= "table" then
+      if type (t) == "function" then
+        return get_body (t)
+      elseif type (t) ~= "table" then
         return t
       end
       if #t == 1 then
