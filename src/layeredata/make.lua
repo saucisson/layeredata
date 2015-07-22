@@ -28,31 +28,45 @@ return function (special_keys, debug)
   Proxy.key = {
     checks   = special_keys.checks   or "__checks__",
     default  = special_keys.default  or "__default__",
-    depends  = special_keys.depends  or "__depends__",
     label    = special_keys.label    or "__label__",
     messages = special_keys.messages or "__messages__",
-    meta     = special_keys.meta     or "__meta__",
     refines  = special_keys.refines  or "__refines__",
   }
 
-  Proxy.special = {
-    normal    = "__normal__",
-    norefines = "__norefines__",
-    noparents = "__noparents__",
+  Proxy.nocheck = {
+    [Proxy.key.checks  ] = true,
+    [Proxy.key.default ] = true,
+    [Proxy.key.label   ] = true,
+    [Proxy.key.messages] = true,
+    [Proxy.key.refines ] = true,
   }
 
-  Proxy.key_type = {
-    [Proxy.key.checks  ] = Proxy.special.norefines,
-    [Proxy.key.default ] = Proxy.special.normal,
-    [Proxy.key.depends ] = Proxy.special.noparents,
-    [Proxy.key.label   ] = Proxy.special.noparents,
-    [Proxy.key.messages] = Proxy.special.norefines,
-    [Proxy.key.meta    ] = Proxy.special.normal,
-    [Proxy.key.refines ] = Proxy.special.noparents,
+  Proxy.nodefault = {
+    [Proxy.key.checks  ] = true,
+    [Proxy.key.default ] = true,
+    [Proxy.key.label   ] = true,
+    [Proxy.key.messages] = true,
+    [Proxy.key.refines ] = true,
+  }
+
+  Proxy.norefines = {
+    [Proxy.key.checks  ] = true,
+    [Proxy.key.label   ] = true,
+    [Proxy.key.messages] = true,
+    [Proxy.key.refines ] = true,
+  }
+
+  Proxy.noresolve = {
+    [Proxy.key.checks  ] = true,
+    [Proxy.key.default ] = true,
+    [Proxy.key.label   ] = true,
+    [Proxy.key.messages] = true,
+    [Proxy.key.refines ] = true,
   }
 
   Proxy.tag = {
-    null  = {},
+    null      = {},
+    computing = {},
   }
 
   local unpack = table.unpack or unpack
@@ -75,7 +89,6 @@ return function (special_keys, debug)
       print ("Clear Caches:", proxy)
     end
     Proxy.refines:clear ()
-    Proxy.depends:clear ()
     Layer.caches = {
       index  = setmetatable ({}, IgnoreKeys),
       pairs  = setmetatable ({}, IgnoreKeys),
@@ -99,16 +112,7 @@ return function (special_keys, debug)
     if type (data) ~= "table" then
       return data
     elseif getmetatable (data) == Proxy then
-      if #data.__keys == 0 then
-        result = data
-      else
-        local reference = Reference.new (false)
-        local keys      = data.__keys
-        for i = 1, #keys do
-          reference = reference [keys [i]]
-        end
-        result = reference
-      end
+      return data
     elseif getmetatable (data) == Reference then
       result = data
     elseif data.__proxy then
@@ -259,12 +263,12 @@ return function (special_keys, debug)
     end
     cache [proxy] = true
     for i = 1, #proxy.__keys do
-      local special = Proxy.key_type [proxy.__keys [i]]
-      if special ~= nil and special ~= Proxy.special.normal then
+      local key = proxy.__keys [i]
+      if Proxy.nocheck [key] then
         return
       end
     end
-    local checks = proxy [Proxy.key.checks  ]
+    local checks = proxy [Proxy.key.checks]
     if not checks then
       return
     end
@@ -299,9 +303,12 @@ return function (special_keys, debug)
       local cached = cache [proxy]
       if cached == Proxy.tag.null then
         return nil
+      elseif cached == Proxy.tag.computing then
+        return nil
       elseif cached ~= nil then
         return cached
       end
+      cache [proxy] = Proxy.tag.computing
     end
     if indent then
       print (">", indent .. tostring (proxy))
@@ -309,7 +316,7 @@ return function (special_keys, debug)
     end
     local result
     while true do
-      local _, c = Proxy.apply (proxy) (proxy)
+      local _, c = Proxy.apply { proxy = proxy, resolve = true, iterate = false, }
       if getmetatable (c) == Proxy then
         proxy = c
       elseif type (c) ~= "table" then
@@ -331,7 +338,7 @@ return function (special_keys, debug)
     end
     if indent then
       indent = indent:sub (1, #indent-2)
---      print ("<", proxy.__cache, indent .. tostring (proxy) .. " = " .. tostring (result))
+--      print ("<", indent .. tostring (proxy) .. " = " .. tostring (result))
     end
     return result
   end
@@ -343,7 +350,7 @@ return function (special_keys, debug)
     proxy = Proxy.sub (proxy, key)
     key   = Layer.import (key  )
     value = Layer.import (value)
-    local p, r = Proxy.apply (proxy, true) ()
+    local p, r = Proxy.apply { proxy = proxy, resolve = false, iterate = false, }
     if r == nil then
       p = proxy
     elseif getmetatable (r) == Reference and getmetatable (value) ~= Reference then
@@ -411,7 +418,7 @@ return function (special_keys, debug)
 
   function Proxy.is_reference (proxy)
     assert (getmetatable (proxy) == Proxy)
-    local _, r = Proxy.apply (proxy, true) ()
+    local _, r = Proxy.apply { proxy = proxy, resolve = false, iterate = false, }
     return getmetatable (r) == Reference
   end
 
@@ -435,13 +442,6 @@ return function (special_keys, debug)
     end
   end
 
-  Proxy.depends = c3.new {
-    superclass = function (proxy)
-      assert (getmetatable (proxy) == Proxy)
-      return proxy.__layer.__data [Proxy.key.depends]
-    end,
-  }
-
   Proxy.refines = c3.new {
     superclass = function (proxy)
       assert (getmetatable (proxy) == Proxy)
@@ -458,88 +458,110 @@ return function (special_keys, debug)
     end,
   }
 
-  function Proxy.apply (p, no_resolve)
-    assert (getmetatable (p) == Proxy)
-    local coroutine = coromake ()
+--local count = 0
+
+  function Proxy.apply (t)
+    assert (getmetatable (t.proxy) == Proxy)
+    local coroutine = t.iterate and coromake () or nil
+    local resolve   = t.resolve ~= nil and t.resolve or not t.noresolve
     local seen      = {}
     local noback    = {}
     local function perform (proxy)
+--      if count > 200 then
+--        os.exit (1)
+--      else
+--        count = count+1
+--      end
       assert (getmetatable (proxy) == Proxy)
       if seen [proxy] then
         return nil
       end
       seen [proxy] = true
       local keys   = proxy.__keys
-      -- 1. Search in all layers:
-      local layers  = Proxy.depends (proxy.__layer.__root)
-      for i = #layers, 1, -1 do
-        local current = layers [i].__layer.__data
-        for j = 1, #keys do
-          current = current [keys [j]]
-          if getmetatable (current) == Reference and not no_resolve then
-            assert (j == #keys)
+      -- Search in current layer:
+      do
+        local current = proxy.__layer.__data
+        for i = 1, #keys do
+          current = current [keys [i]]
+          if getmetatable (current) == Reference and resolve then
+            assert (i == #keys)
             current = Reference.resolve (current, proxy)
             break
-          elseif j ~= #keys and type (current) ~= "table" then
+          elseif i ~= #keys and type (current) ~= "table" then
             current = nil
             break
           end
         end
         if current ~= nil then
-          coroutine.yield (proxy, current)
+          if coroutine then
+            coroutine.yield (proxy, current)
+          else
+            return proxy, current
+          end
         end
       end
-      -- 2. Do not search in parents within special keys:
-      for i = 1, #keys do
-        local key = keys [i]
-        if Proxy.key_type [key] == Proxy.special.noparents then
-          return
+      -- Search in refined:
+      do
+        local current = proxy.__layer.__root
+        for i = 1, #keys do
+          local key = keys [i]
+          if Proxy.norefines [key] then
+            break
+          else
+            current = Proxy.sub (current, key)
+          end
         end
-      end
-      -- 3. Search in parents:
-      local current = proxy
-      for i = #keys, 0, -1 do
-        if Proxy.key_type [keys [i]] ~= Proxy.special.norefines then
+        while current do
           local refines = Proxy.refines (current)
-          for j = #refines-1, 1, -1 do
-            local refined = refines [j]
-            if not noback [refines [j]] then
-              local back = noback [refines [j]]
-              noback [refines [j]] = true
-              for k = i+1, #keys do
-                refined = Proxy.sub (refined, keys [k])
+          for i = #refines-1, 1, -1 do
+            local refined = refines [i]
+            if not noback [refines [i]] then
+              noback [refines [i]] = true
+              for j = #current.__keys+1, #keys do
+                refined = Proxy.sub (refined, keys [j])
               end
-              perform (refined)
-              noback [refines [j]] = back
+              local p, c = perform (refined)
+              if p and not coroutine then
+                return p, c
+              end
+              noback [refines [i]] = nil
             end
           end
-        end
-        current = current.__parent
-      end
-      -- 4. Do not search in default within special keys:
-      -- FIXME: not sure it is a valid optimization!
-      for i = 1, #keys do
-        local key = keys [i]
-        if key == Proxy.key.default then
-          return
+          current = current.__parent
         end
       end
-      -- 5. Search default:
-      current = proxy.__parent
-      for i = #keys-2, 0, -1 do
-        current = current.__parent
-        if Proxy.key_type [keys [i]] == nil or Proxy.key_type [keys [i]] == Proxy.special.normal then
-          local c = Proxy.sub (current, Proxy.key.default)
-          for j = i+2, #keys do
-            c = Proxy.sub (c, keys [j])
+      -- Search default:
+      do
+        local current = proxy.__layer.__root
+        for i = 1, #keys do
+          local key = keys [i]
+          if Proxy.nodefault [key] then
+            current = nil
+            break
+          else
+            current = Proxy.sub (current, key)
           end
-          perform (c)
+        end
+        while current do
+          local s = Proxy.sub (current, Proxy.key.default)
+          for j = #current.__keys+2, #keys do
+            s = Proxy.sub (s, keys [j])
+          end
+          local p, c = perform (s)
+          if p and not coroutine then
+            return p, c
+          end
+          current = current.__parent
         end
       end
     end
-    return coroutine.wrap (function ()
-      perform (p)
-    end)
+    if coroutine then
+      return coroutine.wrap (function ()
+        perform (t.proxy)
+      end)
+    else
+      return perform (t.proxy)
+    end
   end
 
   function Proxy.__len (proxy)
@@ -548,18 +570,14 @@ return function (special_keys, debug)
     if cache [proxy] then
       return cache [proxy]
     end
-    local result = {}
-    for _, t in Proxy.apply (proxy) do
-      if type (t) == "table" and getmetatable (t) ~= Reference then
-        for k in pairs (t) do
-          if type (k) == "number" and proxy [k] ~= nil then
-            result [k] = true
-          end
-        end
+    for i = 1, math.huge do
+      local result = proxy [i]
+      if result == nil then
+        cache [proxy] = i-1
+        return i-1
       end
     end
-    cache [proxy] = #result
-    return #result
+    assert (false)
   end
 
   Proxy.size = Proxy.__len
@@ -604,7 +622,7 @@ return function (special_keys, debug)
     local coroutine = coromake ()
     return coroutine.wrap (function ()
       local cached = {}
-      for p, t in Proxy.apply (proxy) do
+      for p, t in Proxy.apply { proxy = proxy, resolve = true, iterate = true, } do
         if p == proxy then
           if type (t) == "table" then
             for k in pairs (t) do
@@ -643,8 +661,8 @@ return function (special_keys, debug)
       local result = {}
       equivalents [p] = result
       for k in Proxy.__pairs (p, {}) do
-        if k ~= Proxy.key.depends then
-          local _, r = Proxy.apply (Proxy.sub (p, k), true) ()
+        if k ~= Proxy.key.refines then
+          local _, r = Proxy.apply { proxy = Proxy.sub (p, k), resolve = false, iterate = false }
           if getmetatable (r) == Reference then
             result [f (k)] = r
           else
@@ -714,7 +732,7 @@ return function (special_keys, debug)
       local current = proxy.__layer.__root
       for i = 1, #proxy.__keys-1 do
         local key = proxy.__keys [i]
-        if Proxy.key_type [key] ~= nil and Proxy.key_type [key] ~= Proxy.special.normal then
+        if Proxy.noresolve [key] or current [key] == nil then
           break
         end
         current = current [key]
