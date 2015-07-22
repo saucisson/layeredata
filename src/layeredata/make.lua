@@ -647,7 +647,7 @@ return function (special_keys, debug)
         if p == proxy then
           if type (t) == "table" then
             for k in pairs (t) do
-              if k~= Proxy.key.meta and cached [k] == nil and proxy [k] ~= nil then
+              if k ~= Proxy.key.meta and cached [k] == nil and proxy [k] ~= nil then
                 cached [k] = proxy [k]
                 coroutine.yield (k, proxy [k])
               end
@@ -691,6 +691,7 @@ return function (special_keys, debug)
           end
         end
       end
+      result [Proxy.key.meta] = f (p [Proxy.key.meta])
       return result
     end
     local result = f (proxy)

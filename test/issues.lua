@@ -431,3 +431,18 @@ describe ("issue #20", function ()
     assert.is_nil    (layer.a.__meta__.v)
   end)
 end)
+
+describe ("issue #22", function ()
+  it ("is fixed", function ()
+    local Layer = require "layeredata.make" (nil, false)
+    local layer = Layer.new { layer = "layer" }
+    layer.a = {
+      x = 1,
+      y = 2,
+      __meta__    = { z = 3 },
+      __default__ = { v = 0 },
+    }
+    local flattened = Layer.flatten (layer)
+    assert.are.equal (flattened.a.__meta__.z, 3)
+  end)
+end)
