@@ -479,8 +479,6 @@ return function (special_keys, debug)
     end,
   }
 
---local count = 0
-
   function Proxy.apply (t)
     assert (getmetatable (t.proxy) == Proxy)
     local coroutine = t.iterate and coromake () or nil
@@ -488,11 +486,6 @@ return function (special_keys, debug)
     local seen      = {}
     local noback    = {}
     local function perform (proxy)
---      if count > 200 then
---        os.exit (1)
---      else
---        count = count+1
---      end
       assert (getmetatable (proxy) == Proxy)
       if seen [proxy] then
         return nil
