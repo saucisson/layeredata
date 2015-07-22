@@ -2,7 +2,8 @@ require 'busted.runner'()
 
 local assert   = require "luassert"
 
-describe ("issue #1 #now", function ()
+--[==[
+describe ("issue #1", function ()
   it ("is fixed", function ()
     local Layer = require "layeredata"
     local layer = Layer.new { name = "layer" }
@@ -19,6 +20,7 @@ describe ("issue #1 #now", function ()
     assert.is_nil    (layer.x.a)
   end)
 end)
+--]==]
 
 describe ("issue #2", function ()
   it ("is fixed", function ()
