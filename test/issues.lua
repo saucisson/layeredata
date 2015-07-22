@@ -40,7 +40,7 @@ describe ("issue #3", function ()
     local Layer = require "layeredata.make" (nil, false)
     local back  = Layer.new { name = "back" }
     local front = Layer.new { name = "front" }
-    front.__depends__ = { back }
+    front.__refines__ = { back }
     back.x    = {}
     front.x.y = true
     assert.is_true (front.x.y)
@@ -167,11 +167,11 @@ describe ("issue #10", function ()
     a.x = {
       value = 1,
     }
-    b.__depends__ = { a }
+    b.__refines__ = { a }
     b.y = {
       __refines__ = { Layer.reference "a".x }
     }
-    c.__depends__ = { b }
+    c.__refines__ = { b }
     c.z = {
       __refines__ = { Layer.reference "a".y }
     }
@@ -289,7 +289,7 @@ describe ("issue #16", function ()
     local Layer = require "layeredata.make" (nil, false)
     local a     = Layer.new { name = "a" }
     local b     = Layer.new { name = "b" }
-    b.__depends__ = { a }
+    b.__refines__ = { a }
     a.x = {
       value = 1,
     }
@@ -308,15 +308,13 @@ describe ("issue #17", function ()
     local Layer = require "layeredata.make" ({
       checks   = "CHECKS",
       default  = "DEFAULT",
-      depends  = "DEPENDS",
       label    = "LABEL",
       messages = "MESSAGES",
-      meta     = "META",
       refines  = "REFINES",
     }, false)
     local a     = Layer.new { name = "a" }
     local b     = Layer.new { name = "b" }
-    b.DEPENDS = { a }
+    b.REFINES = { a }
     a.x = {
       value = 1,
     }
@@ -390,7 +388,7 @@ describe ("issue #19", function ()
       },
     }
 
-    model.__depends__ = {
+    model.__refines__ = {
       layer,
     }
 
