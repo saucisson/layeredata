@@ -516,58 +516,87 @@ return function (special_keys, debug)
           end
         end
       end
-      -- Search in refined:
+      local refines_proxies = {}
+      local default_proxies = {}
       do
         local current = proxy.__layer.__root
-        for i = 1, #keys-1 do
+        refines_proxies [1] = current
+        default_proxies [1] = current
+        for i = 1, #keys do
           local key = keys [i]
-          if Proxy.norefines [key] then
+          current = i == #keys
+                and Proxy.sub (current, key)
+                 or current [key]
+          if getmetatable (current) ~= Proxy then
             break
-          else
-            current = Proxy.sub (current, key)
+          end
+          if Proxy.norefines [key] then
+            refines_proxies.finished = true
+          end
+          if not refines_proxies.finished then
+            refines_proxies [#refines_proxies+1] = current
+          end
+          default_proxies [#default_proxies+1] = current
+        end
+        for i = 1, #keys do
+          local key = keys [i]
+          if Proxy.nodefault [key] then
+            default_proxies = {}
+            break
           end
         end
-        while current do
+      end
+      -- Search in refined:
+      for k = 1, #refines_proxies do
+        local current = refines_proxies [k]
+        if current then
           local refines = Proxy.refines (current)
           for i = #refines-1, 1, -1 do
             local refined = refines [i]
             if not noback [refines [i]] then
               noback [refines [i]] = true
-              for j = #current.__keys+1, #keys do
-                refined = Proxy.sub (refined, keys [j])
+              for j = k, #keys do
+                local key = keys [j]
+                refined = j == #keys
+                      and Proxy.sub (refined, key)
+                       or refined [key]
+                if getmetatable (refined) ~= Proxy then
+                  refined = nil
+                  break
+                end
               end
-              local p, c = perform (refined)
-              if p and not coroutine then
-                return p, c
+              if refined then
+                local p, c = perform (refined)
+                if p and not coroutine then
+                  return p, c
+                end
               end
               noback [refines [i]] = nil
             end
           end
-          current = current.__parent
         end
       end
-      -- Search default:
-      do
-        local current = proxy.__layer.__root
-        for i = 1, #keys do
-          local key = keys [i]
-          if Proxy.nodefault [key] then
-            current = nil
-            break
-          else
-            current = Proxy.sub (current, key)
+      -- Search in default:
+      for k = 1, #default_proxies do
+        local current = default_proxies [k]
+        local default = current [Proxy.key.default]
+        if default then
+          for j = k+1, #keys do
+            local key = keys [j]
+            default = j == #keys
+                  and Proxy.sub (default, key)
+                   or default [key]
+            if getmetatable (default) ~= Proxy then
+              default = nil
+              break
+            end
           end
         end
-        while current do
-          local s = Proxy.sub (current, Proxy.key.default)
-          for j = #current.__keys+2, #keys do
-            s = Proxy.sub (s, keys [j])
-          end
-          local p, c = perform (s)
+        if default then
+          local p, c = perform (default)
           if p and not coroutine then
             return p, c
           end
-          current = current.__parent
         end
       end
     end
@@ -759,7 +788,10 @@ return function (special_keys, debug)
         and current [Proxy.key.labels] [reference.__from] then
           local rkeys = reference.__keys
           for i = 1, #rkeys do
-            current = Proxy.sub (current, rkeys [i])
+            if type (current) ~= "table" then
+              return nil
+            end
+            current = current [rkeys [i]]
           end
           return current
         end
