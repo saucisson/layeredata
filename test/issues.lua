@@ -404,7 +404,7 @@ end)
 describe ("issue #20", function ()
   it ("is fixed", function ()
     local Layer = require "layeredata.make" (nil, false)
-    local layer = Layer.new { layer = "layer" }
+    local layer = Layer.new { name = "layer" }
     layer.a = {
       x = 1,
       y = 2,
@@ -435,5 +435,30 @@ describe ("issue #22", function ()
     }
     local flattened = Layer.flatten (layer)
     assert.are.equal (flattened.a.__meta__.z, 3)
+  end)
+end)
+
+describe ("issue #23", function ()
+  it ("is fixed", function ()
+    local Layer  = require "layeredata.make" (nil, false)
+    local record = Layer.new { name = "record" }
+    record.__checks__ = {
+     check = function (proxy)
+       return "checked", true
+     end,
+    }
+    local model = Layer.new { name = "instance" }
+    model.a = {
+     __default__ = {
+       __refines__ = {
+         record,
+       },
+     },
+     b = {},
+    }
+    local _ = model.a.b
+    assert.is_true (model.a.b.__messages__.checked)
+    assert.is_nil  (model.__messages__)
+--    print (Layer.toyaml (Layer.flatten (model)))
   end)
 end)

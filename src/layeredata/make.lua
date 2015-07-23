@@ -34,38 +34,6 @@ return function (special_keys, debug)
     refines  = special_keys.refines  or "__refines__",
   }
 
-  Proxy.nocheck = {
-    [Proxy.key.checks  ] = true,
-    [Proxy.key.default ] = true,
-    [Proxy.key.labels  ] = true,
-    [Proxy.key.messages] = true,
-    [Proxy.key.refines ] = true,
-  }
-
-  Proxy.nodefault = {
-    [Proxy.key.checks  ] = true,
-    [Proxy.key.default ] = true,
-    [Proxy.key.labels  ] = true,
-    [Proxy.key.meta    ] = true,
-    [Proxy.key.messages] = true,
-    [Proxy.key.refines ] = true,
-  }
-
-  Proxy.norefines = {
-    [Proxy.key.checks  ] = true,
-    [Proxy.key.labels  ] = true,
-    [Proxy.key.messages] = true,
-    [Proxy.key.refines ] = true,
-  }
-
-  Proxy.noresolve = {
-    [Proxy.key.checks  ] = true,
-    [Proxy.key.default ] = true,
-    [Proxy.key.labels  ] = true,
-    [Proxy.key.messages] = true,
-    [Proxy.key.refines ] = true,
-  }
-
   Proxy.tag = {
     null      = {},
     computing = {},
@@ -233,7 +201,6 @@ return function (special_keys, debug)
       bodies [t] = result
       return result
     end
-
     local function f (t)
       if type (t) == "function" then
         return get_body (t)
@@ -285,7 +252,13 @@ return function (special_keys, debug)
     cache [proxy] = true
     for i = 1, #proxy.__keys do
       local key = proxy.__keys [i]
-      if Proxy.nocheck [key] then
+      if key == Proxy.key.checks
+      or key == Proxy.key.default
+      or key == Proxy.key.labels
+      or key == Proxy.key.messages
+      or key == Proxy.key.meta
+      or key == Proxy.key.refines
+      then
         return
       end
     end
@@ -530,24 +503,42 @@ return function (special_keys, debug)
           if getmetatable (current) ~= Proxy then
             break
           end
-          if Proxy.norefines [key] then
+          if key == Proxy.key.checks
+          or key == Proxy.key.default
+          or key == Proxy.key.labels
+          or key == Proxy.key.messages
+          or key == Proxy.key.meta
+          or key == Proxy.key.refines
+          then
             refines_proxies.finished = true
+          end
+          if key == Proxy.key.checks
+          or key == Proxy.key.default
+          or key == Proxy.key.labels
+          or key == Proxy.key.messages
+          or key == Proxy.key.meta
+          or key == Proxy.key.refines
+          then
+            default_proxies.finished = true
           end
           if not refines_proxies.finished then
             refines_proxies [#refines_proxies+1] = current
           end
-          default_proxies [#default_proxies+1] = current
+          if not default_proxies.finished then
+            default_proxies [#default_proxies+1] = current
+          end
         end
         for i = 1, #keys do
           local key = keys [i]
-          if Proxy.nodefault [key] then
-            default_proxies = {}
-            break
+          if key == Proxy.key.messages
+          or key == Proxy.key.refines
+          then
+            refines_proxies = {}
           end
         end
       end
       -- Search in refined:
-      for k = 1, #refines_proxies do
+      for k = #refines_proxies, 1, -1 do
         local current = refines_proxies [k]
         if current then
           local refines = Proxy.refines (current)
@@ -577,7 +568,7 @@ return function (special_keys, debug)
         end
       end
       -- Search in default:
-      for k = 1, #default_proxies do
+      for k = #default_proxies-1, 1, -1 do
         local current = default_proxies [k]
         local default = current [Proxy.key.default]
         if default then
@@ -778,7 +769,12 @@ return function (special_keys, debug)
       local current = proxy.__layer.__root
       for i = 1, #proxy.__keys-1 do
         local key = proxy.__keys [i]
-        if Proxy.noresolve [key] or current [key] == nil then
+        if current [key] == nil
+        or key == Proxy.key.default
+        or key == Proxy.key.labels
+        or key == Proxy.key.messages
+        or key == Proxy.key.refines
+        then
           break
         end
         current = current [key]
