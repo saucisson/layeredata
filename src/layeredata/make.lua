@@ -344,7 +344,6 @@ return function (special_keys, debug)
         result = c
         break
       else
-        Proxy.check (proxy)
         result = proxy
         break
       end
@@ -360,6 +359,9 @@ return function (special_keys, debug)
     if indent then
       indent = indent:sub (1, #indent-2)
 --      print ("<", indent .. tostring (proxy) .. " = " .. tostring (result))
+    end
+    if getmetatable (result) == Proxy then
+      Proxy.check (result)
     end
     return result
   end
@@ -517,7 +519,7 @@ return function (special_keys, debug)
       -- Search in refined:
       do
         local current = proxy.__layer.__root
-        for i = 1, #keys do
+        for i = 1, #keys-1 do
           local key = keys [i]
           if Proxy.norefines [key] then
             break
