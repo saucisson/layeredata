@@ -1,1 +1,1 @@
-return require "layeredata.make" ()
+return require "layeredata.make" (nil, false)
