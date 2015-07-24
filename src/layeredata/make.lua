@@ -489,48 +489,34 @@ return function (special_keys, debug)
           end
         end
       end
+      -- Cut for messages:
+      for i = 1, #keys do
+        if keys [i] == Proxy.key.messages then
+          return
+        end
+      end
+      -- Search in refined:
       local refines_proxies = {}
-      local default_proxies = {}
       do
         local current = proxy.__layer.__root
         refines_proxies [1] = current
-        default_proxies [1] = current
         for i = 1, #keys do
-          local key     = keys [i]
-          local nextkey = keys [i+1]
-          current = i == #keys
-                and Proxy.sub (current, key)
-                 or current [key]
+          local key = keys [i]
+          current = current [key]
           if getmetatable (current) ~= Proxy then
             break
           end
           if  key ~= Proxy.key.checks
           and key ~= Proxy.key.labels
-          and key ~= Proxy.key.messages
-          and key ~= Proxy.key.refines
           then
             refines_proxies [#refines_proxies+1] = current
-          end
-          if  nextkey ~= Proxy.key.checks
-          and nextkey ~= Proxy.key.default
-          and nextkey ~= Proxy.key.labels
-          and nextkey ~= Proxy.key.messages
-          and nextkey ~= Proxy.key.meta
-          and nextkey ~= Proxy.key.refines
-          then
-            default_proxies [#default_proxies+1] = current
-          end
-        end
-        for i = 1, #keys do
-          local key = keys [i]
-          if key == Proxy.key.messages
-          or key == Proxy.key.refines
+          elseif key == Proxy.key.refines
           then
             refines_proxies = {}
+            break
           end
         end
       end
-      -- Search in refined:
       for k = #refines_proxies, 1, -1 do
         local current = refines_proxies [k]
         if current then
@@ -561,6 +547,27 @@ return function (special_keys, debug)
         end
       end
       -- Search in default:
+      local default_proxies = {}
+      do
+        local current = proxy.__layer.__root
+        default_proxies [1] = current
+        for i = 1, #keys do
+          local key     = keys [i]
+          local nextkey = keys [i+1]
+          current = i == #keys and Proxy.sub (current, key) or current [key]
+          if getmetatable (current) ~= Proxy then
+            break
+          end
+          if  nextkey ~= Proxy.key.checks
+          and nextkey ~= Proxy.key.default
+          and nextkey ~= Proxy.key.labels
+          and nextkey ~= Proxy.key.meta
+          and nextkey ~= Proxy.key.refines
+          then
+            default_proxies [#default_proxies+1] = current
+          end
+        end
+      end
       for k = #default_proxies-1, 1, -1 do
         local current = default_proxies [k]
         local default = current [Proxy.key.default]
