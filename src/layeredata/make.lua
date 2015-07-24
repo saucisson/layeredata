@@ -473,6 +473,9 @@ return function (special_keys, debug)
         for i = 1, #keys do
           current = current [keys [i]]
           if getmetatable (current) == Reference and resolve then
+            if i ~= #keys then
+              print (i, proxy, current)
+            end
             assert (i == #keys)
             current = Reference.resolve (current, proxy)
             break
@@ -506,15 +509,17 @@ return function (special_keys, debug)
           if getmetatable (current) ~= Proxy then
             break
           end
-          if  key ~= Proxy.key.checks
-          and key ~= Proxy.key.labels
-          then
-            refines_proxies [#refines_proxies+1] = current
-          elseif key == Proxy.key.refines
+          if key == Proxy.key.refines
           then
             refines_proxies = {}
             break
           end
+          if key == Proxy.key.checks
+          or key == Proxy.key.labels
+          then
+            break
+          end
+          refines_proxies [#refines_proxies+1] = current
         end
       end
       for k = #refines_proxies, 1, -1 do
@@ -554,39 +559,43 @@ return function (special_keys, debug)
         for i = 1, #keys do
           local key     = keys [i]
           local nextkey = keys [i+1]
-          current = i == #keys and Proxy.sub (current, key) or current [key]
+          current = current [key]
           if getmetatable (current) ~= Proxy then
             break
           end
-          if  nextkey ~= Proxy.key.checks
-          and nextkey ~= Proxy.key.default
-          and nextkey ~= Proxy.key.labels
-          and nextkey ~= Proxy.key.meta
-          and nextkey ~= Proxy.key.refines
+          if nextkey == Proxy.key.checks
+          or nextkey == Proxy.key.default
+          or nextkey == Proxy.key.labels
+          or nextkey == Proxy.key.meta
+          or nextkey == Proxy.key.refines
           then
+            default_proxies [#default_proxies+1] = false
+          else
             default_proxies [#default_proxies+1] = current
           end
         end
       end
       for k = #default_proxies-1, 1, -1 do
         local current = default_proxies [k]
-        local default = current [Proxy.key.default]
-        if default then
-          for j = k+1, #keys do
-            local key = keys [j]
-            default = j == #keys
-                  and Proxy.sub (default, key)
-                   or default [key]
-            if getmetatable (default) ~= Proxy then
-              default = nil
-              break
+        if current then
+          local default = current [Proxy.key.default]
+          if default then
+            for j = k+1, #keys do
+              local key = keys [j]
+              default = j == #keys
+                    and Proxy.sub (default, key)
+                     or default [key]
+              if getmetatable (default) ~= Proxy then
+                default = nil
+                break
+              end
             end
           end
-        end
-        if default then
-          local p, c = perform (default)
-          if p and not coroutine then
-            return p, c
+          if default then
+            local p, c = perform (default)
+            if p and not coroutine then
+              return p, c
+            end
           end
         end
       end
@@ -659,7 +668,14 @@ return function (special_keys, debug)
     return coroutine.wrap (function ()
       local cached = {}
       for p, t in Proxy.apply { proxy = proxy, resolve = true, iterate = true, } do
-        if type (t) == "table" then
+        if getmetatable (t) == Proxy then
+          for k in Proxy.__pairs (t) do
+            if cached [k] == nil and t [k] ~= nil then
+              cached [k] = t [k]
+              coroutine.yield (k, t [k])
+            end
+          end
+        elseif type (t) == "table" then
           for k in pairs (t) do
             if cached [k] == nil and p [k] ~= nil then
               cached [k] = p [k]
