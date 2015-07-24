@@ -496,35 +496,28 @@ return function (special_keys, debug)
         refines_proxies [1] = current
         default_proxies [1] = current
         for i = 1, #keys do
-          local key = keys [i]
+          local key     = keys [i]
+          local nextkey = keys [i+1]
           current = i == #keys
                 and Proxy.sub (current, key)
                  or current [key]
           if getmetatable (current) ~= Proxy then
             break
           end
-          if key == Proxy.key.checks
-          or key == Proxy.key.default
-          or key == Proxy.key.labels
-          or key == Proxy.key.messages
-          or key == Proxy.key.meta
-          or key == Proxy.key.refines
+          if  key ~= Proxy.key.checks
+          and key ~= Proxy.key.labels
+          and key ~= Proxy.key.messages
+          and key ~= Proxy.key.refines
           then
-            refines_proxies.finished = true
-          end
-          if key == Proxy.key.checks
-          or key == Proxy.key.default
-          or key == Proxy.key.labels
-          or key == Proxy.key.messages
-          or key == Proxy.key.meta
-          or key == Proxy.key.refines
-          then
-            default_proxies.finished = true
-          end
-          if not refines_proxies.finished then
             refines_proxies [#refines_proxies+1] = current
           end
-          if not default_proxies.finished then
+          if  nextkey ~= Proxy.key.checks
+          and nextkey ~= Proxy.key.default
+          and nextkey ~= Proxy.key.labels
+          and nextkey ~= Proxy.key.messages
+          and nextkey ~= Proxy.key.meta
+          and nextkey ~= Proxy.key.refines
+          then
             default_proxies [#default_proxies+1] = current
           end
         end
@@ -645,8 +638,9 @@ return function (special_keys, debug)
 
   Proxy.ipairs = Proxy.__ipairs
 
-  function Proxy.__pairs (proxy, except)
+  function Proxy.__pairs (proxy)
     assert (getmetatable (proxy) == Proxy)
+    local coroutine = coromake ()
     local cache = Layer.caches.pairs
     if cache [proxy] then
       return coroutine.wrap (function ()
@@ -655,24 +649,14 @@ return function (special_keys, debug)
         end
       end)
     end
-    local coroutine = coromake ()
     return coroutine.wrap (function ()
       local cached = {}
       for p, t in Proxy.apply { proxy = proxy, resolve = true, iterate = true, } do
-        if p == proxy then
-          if type (t) == "table" then
-            for k in pairs (t) do
-              if k ~= Proxy.key.meta and cached [k] == nil and proxy [k] ~= nil then
-                cached [k] = proxy [k]
-                coroutine.yield (k, proxy [k])
-              end
-            end
-          end
-        else
-          for k in Proxy.__pairs (p, except) do
-            if cached [k] == nil then
-              cached [k] = proxy [k]
-              coroutine.yield (k, proxy [k])
+        if type (t) == "table" then
+          for k in pairs (t) do
+            if cached [k] == nil and p [k] ~= nil then
+              cached [k] = p [k]
+              coroutine.yield (k, p [k])
             end
           end
         end
@@ -682,6 +666,24 @@ return function (special_keys, debug)
   end
 
   Proxy.pairs = Proxy.__pairs
+
+  function Proxy.contents (proxy)
+    assert (getmetatable (proxy) == Proxy)
+    local coroutine = coromake ()
+    return coroutine.wrap (function ()
+      for key, value in Proxy.__pairs (proxy) do
+        if  key ~= Proxy.key.checks
+        and key ~= Proxy.key.default
+        and key ~= Proxy.key.labels
+        and key ~= Proxy.key.messages
+        and key ~= Proxy.key.meta
+        and key ~= Proxy.key.refines
+        then
+          coroutine.yield (key, value)
+        end
+      end
+    end)
+  end
 
   Proxy.new = Layer.__new
 
