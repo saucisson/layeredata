@@ -156,12 +156,15 @@ return function (special_keys, debug)
     return table.concat (result, " ")
   end
 
-  function Proxy.dump (proxy, serialize)
+  function Proxy.dump (proxy, options)
     assert (getmetatable (proxy) == Proxy)
+    if type (options) ~= "table" then
+      options = {}
+    end
     local Layer_serialize     = Layer    .__serialize
     local Proxy_serialize     = Proxy    .__serialize
     local Reference_serialize = Reference.__serialize
-    if not serialize then
+    if not options.computer_friendly then
       Layer    .__serialize = nil
       Proxy    .__serialize = nil
       Reference.__serialize = nil
@@ -172,7 +175,7 @@ return function (special_keys, debug)
       sortkeys = true,
       compact  = false,
     })
-    if not serialize then
+    if not options.computer_friendly then
       Layer    .__serialize = Layer_serialize
       Proxy    .__serialize = Proxy_serialize
       Reference.__serialize = Reference_serialize
@@ -180,9 +183,9 @@ return function (special_keys, debug)
     return result
   end
 
-  function Proxy.toyaml (proxy)
+  function Proxy.toyaml (proxy, options)
     assert (getmetatable (proxy) == Proxy)
-    local dumped   = Proxy.dump (proxy, false)
+    local dumped   = Proxy.dump (proxy, options)
     local ok, data = serpent.load (dumped, { safe = false })
     assert (ok)
     local bodies = {}
@@ -710,8 +713,12 @@ return function (special_keys, debug)
 
   Proxy.new = Layer.__new
 
-  function Proxy.flatten (proxy)
+  function Proxy.flatten (proxy, options)
     assert (getmetatable (proxy) == Proxy)
+    if type (options) ~= "table" then
+      options = {}
+    end
+    local iterate = options.compact and Proxy.contents or Proxy.__pairs
     local equivalents = {}
     local function f (p)
       if getmetatable (p) ~= Proxy then
@@ -721,17 +728,17 @@ return function (special_keys, debug)
       end
       local result = {}
       equivalents [p] = result
-      for k in Proxy.__pairs (p, {}) do
-        if k ~= Proxy.key.refines then
+      for k in iterate (p) do
           local _, r = Proxy.apply { proxy = Proxy.sub (p, k), resolve = false, iterate = false }
           if getmetatable (r) == Reference then
             result [f (k)] = r
           else
             result [f (k)] = f (p [k])
           end
-        end
       end
-      result [Proxy.key.meta] = f (p [Proxy.key.meta])
+      if not options.compact then
+        result [Proxy.key.meta] = f (p [Proxy.key.meta])
+      end
       return result
     end
     local result = f (proxy)

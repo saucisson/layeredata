@@ -106,7 +106,7 @@ describe ("issue #7", function ()
       b = Layer.reference "x".a,
     }
     assert (Layer.dump (layer):match [[b%s*=%s*"x%s*->%s*%[a%]"]])
-    assert (Layer.dump (layer, true):match [[b%s*=%s*{]])
+    assert (Layer.dump (layer, { computer_friendly = true }):match [[b%s*=%s*{]])
   end)
 end)
 
@@ -459,6 +459,5 @@ describe ("issue #23", function ()
     local _ = model.a.b
     assert.is_true (model.a.b.__messages__.checked)
     assert.is_nil  (model.__messages__)
---    print (Layer.toyaml (Layer.flatten (model)))
   end)
 end)
