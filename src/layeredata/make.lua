@@ -729,12 +729,14 @@ return function (special_keys, debug)
       local result = {}
       equivalents [p] = result
       for k in iterate (p) do
+        if options [k] ~= false then
           local _, r = Proxy.apply { proxy = Proxy.sub (p, k), resolve = false, iterate = false }
           if getmetatable (r) == Reference then
             result [f (k)] = r
           else
             result [f (k)] = f (p [k])
           end
+        end
       end
       if not options.compact then
         result [Proxy.key.meta] = f (p [Proxy.key.meta])
