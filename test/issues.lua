@@ -175,7 +175,7 @@ describe ("issue #10", function ()
     c.z = {
       __refines__ = { Layer.reference "a".y }
     }
-    local d = Layer.flatten (c)
+    local d = Layer.flatten (c, { compact = true })
     assert.are.equal (d.x.value, d.y.value)
     assert.are.equal (d.y.value, d.z.value)
     assert.are.equal (d.z.value, 1)
