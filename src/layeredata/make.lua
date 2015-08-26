@@ -1,7 +1,6 @@
 local coromake = require "coroutine.make"
 local c3       = require "c3"
 local serpent  = require "serpent"
-local yaml     = require "yaml"
 
 return function (special_keys, debug)
   assert (special_keys == nil or type (special_keys) == "table")
@@ -189,6 +188,7 @@ return function (special_keys, debug)
 
   function Proxy.toyaml (proxy, options)
     assert (getmetatable (proxy) == Proxy)
+    local yaml     = require "yaml"
     local dumped   = Proxy.dump (proxy, options)
     local ok, data = serpent.load (dumped, { safe = false })
     assert (ok)
