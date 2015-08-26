@@ -299,13 +299,6 @@ return function (special_keys, debug)
 
   function Proxy.__index (proxy, key)
     assert (getmetatable (proxy) == Proxy)
---    local info = _G.debug.getinfo(2, "nl")
---    if info then
---      if not _G.indexes [info.name or false] then
---        _G.indexes [info.name or false] = {}
---      end
---      _G.indexes [info.name or false] [info.currentline] = (_G.indexes [info.name or false] [info.currentline] or 0)+1
---    end
     proxy = Proxy.sub (proxy, key)
     local cproxy = proxy
     if proxy.__cache then
@@ -347,7 +340,6 @@ return function (special_keys, debug)
     end
     if indent then
       indent = indent:sub (1, #indent-2)
---      print ("<", indent .. tostring (proxy) .. " = " .. tostring (result))
     end
     if getmetatable (result) == Proxy then
       Proxy.check (result)
@@ -494,13 +486,6 @@ return function (special_keys, debug)
           return cached.proxy, cached.current
         end
       end
---      local info = _G.debug.getinfo(2, "nl")
---      if info then
---        if not _G.performs [info.name] then
---          _G.performs [info.name] = {}
---        end
---        _G.performs [info.name] [info.currentline] = (_G.performs [info.name] [info.currentline] or 0)+1
---      end
       assert (getmetatable (proxy) == Proxy)
       if seen [proxy] then
         return nil
