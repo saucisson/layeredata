@@ -19,11 +19,13 @@ dependencies = {
   "c3       >= 0",
   "coronest >= 0",
   "serpent  >= 0",
+  "yaml     >= 1",
 }
 
 build = {
   type    = "builtin",
   modules = {
-    ["layeredata"] = "src/layeredata.lua",
+    ["layeredata"     ] = "src/layeredata/init.lua",
+    ["layeredata.make"] = "src/layeredata/make.lua",
   },
 }

@@ -1,0 +1,29 @@
+#! /bin/bash
+
+set +e
+old_path=${LUA_PATH}
+export LUA_PATH="${PWD}/src/?.lua;${LUA_PATH}"
+
+# Generate documentation:
+docco --layout linear \
+      --output doc/src \
+      $(find src/ -name "*.lua" | sort)
+
+# Run check on all Lua files:
+luacheck $(find src/ -name "*.lua" | sort)
+echo
+
+# Run coverage on all test files:
+rm -rf TAP.txt
+doccotest --output=TAP.txt \
+          --format=TAP     \
+          $(find src/ -name "*.lua" | sort)
+echo
+
+# Run coverage analysis:
+rm -rf cov/
+mkdir -p cov/
+./bin/coverage
+rm -f luacov.stats.out luacov.report.out
+
+export LUA_PATH=${old_path}
