@@ -1,6 +1,6 @@
-require 'busted.runner'()
+require "busted.runner" ()
 
-local assert   = require "luassert"
+local assert = require "luassert"
 
 --[==[
 describe ("issue #1", function ()
