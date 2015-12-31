@@ -7,34 +7,36 @@ return function (debug)
   local Layer = setmetatable ({}, {
     __tostring = function () return "Layer" end
   })
-  local Proxy              = setmetatable ({}, {
+  local Proxy = setmetatable ({}, {
     __tostring = function () return "Proxy" end
   })
-  local Reference          = setmetatable ({}, {
+  local Reference = setmetatable ({}, {
     __tostring = function () return "Reference" end
   })
-  local IgnoreKeys = {}
-  if not debug then
-    IgnoreKeys.__mode = "k"
-  end
+  local Key          = {}
+  local IgnoreKeys   = {}
   local IgnoreValues = {}
   if not debug then
+    IgnoreKeys  .__mode = "k"
     IgnoreValues.__mode = "v"
   end
 
-  Proxy.key = {
-    checks   = special_keys.checks   or "__checks__",
-    default  = special_keys.default  or "__default__",
-    labels   = special_keys.labels   or "__labels__",
-    messages = special_keys.messages or "__messages__",
-    meta     = special_keys.meta     or "__meta__",
-    refines  = special_keys.refines  or "__refines__",
-  }
+  local Read_Only = {}
+  Read_Only.__index    = assert
+  Read_Only.__newindex = assert
+  Proxy.key = setmetatable ({
+    checks   = setmetatable ({}, Key),
+    default  = setmetatable ({}, Key),
+    labels   = setmetatable ({}, Key),
+    messages = setmetatable ({}, Key),
+    meta     = setmetatable ({}, Key),
+    refines  = setmetatable ({}, Key),
+  }, Read_Only)
 
-  Proxy.tag = {
+  Proxy.tag = setmetatable ({
     null      = {},
     computing = {},
-  }
+  }, Read_Only)
 
   local unpack = table.unpack or unpack
 
@@ -75,6 +77,9 @@ return function (debug)
     end
     if not seen then
       seen = {}
+    end
+    if getmetatable (data) == Key then
+      return data
     end
     if seen [data] then
       return seen [data]
@@ -347,7 +352,10 @@ return function (debug)
 
   function Proxy.__newindex (proxy, key, value)
     assert (getmetatable (proxy) == Proxy)
-    assert (type (key) ~= "table" or getmetatable (key) == Proxy or getmetatable (key) == Reference)
+    assert ( type (key) ~= "table"
+          or getmetatable (key) == Proxy
+          or getmetatable (key) == Reference
+          or getmetatable (key) == Key)
     proxy = Proxy.sub (proxy, key)
     key   = Layer.import (key  )
     value = Layer.import (value)
