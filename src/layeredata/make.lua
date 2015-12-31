@@ -2,11 +2,9 @@ local coromake = require "coroutine.make"
 local c3       = require "c3"
 local serpent  = require "serpent"
 
-return function (special_keys, debug)
-  assert (special_keys == nil or type (special_keys) == "table")
-  special_keys = special_keys or {}
-
-  local Layer              = setmetatable ({}, {
+return function (debug)
+  assert (type (debug) == "nil" or type (debug) == "boolean")
+  local Layer = setmetatable ({}, {
     __tostring = function () return "Layer" end
   })
   local Proxy              = setmetatable ({}, {
