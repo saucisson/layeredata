@@ -298,8 +298,6 @@ return function (debug)
     indent = ""
   end
 
---  _G.indexes = {}
-
   function Proxy.__index (proxy, key)
     assert (getmetatable (proxy) == Proxy)
     proxy = Proxy.sub (proxy, key)
