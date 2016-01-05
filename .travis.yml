@@ -13,8 +13,8 @@ env:
   - LUA="luajit=2.1"
 
 before_install:
-  - pip install hererocks --compat=none
-  - hererocks lua_install -r^ --$LUA
+  - pip install hererocks
+  - hererocks lua_install -r^ --$LUA --compat=none
   - export PATH=$PATH:$PWD/lua_install/bin
 
 install:
@@ -25,7 +25,7 @@ install:
 
 script:
   - luacheck --no-unused-args --std max+busted src/*.lua test/*.lua
-  - busted --verbose --coverage test/*.lua
+  - busted --verbose --coverage test/issues.lua
 
 after_success:
   - luacov-coveralls --exclude $TRAVIS_BUILD_DIR/lua_install
