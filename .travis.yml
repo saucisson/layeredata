@@ -20,6 +20,7 @@ install:
   - luarocks install busted
   - luarocks install luacov
   - luarocks install luacov-coveralls
+  - luarocks make rockspec/layeredata-master-1.rockspec
 
 script:
   - luacheck --no-unused-args --std max+busted src/*.lua test/*.lua
