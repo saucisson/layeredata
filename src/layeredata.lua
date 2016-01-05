@@ -264,16 +264,16 @@ end
   return result
 end
 
-function Layer.dump (proxy, f)
+function Layer.dump (proxy)
   assert (getmetatable (proxy) == Proxy)
   local function convert (x, is_key)
     if getmetatable (x) == Key then
       assert (false)
     elseif getmetatable (x) == Reference then
       assert (not is_key)
-      local result = "@" .. string.format ("%q", x.__from)
+      local result = "@" .. x.__from
       for _, y in ipairs (x.__keys) do
-        result = result .. " [" .. tostring (convert (y)) .. "]"
+        result = result .. " / " .. tostring (convert (y))
       end
       return result
     elseif type (x) == "table" then
@@ -303,7 +303,7 @@ function Layer.dump (proxy, f)
       assert (false)
     end
   end
-  return f (convert (Proxy.export (proxy)))
+  return convert (Proxy.export (proxy))
 end
 
 function Proxy.sub (proxy, key)

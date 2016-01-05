@@ -113,8 +113,14 @@ describe ("issue #7", function ()
       b = Layer.reference "x".a,
     }
     assert (Layer.encode (layer):match "%[labels%]")
-    local Yaml = require "yaml"
-    assert (not Layer.dump (layer, Yaml.dump):match "%[labels%]")
+    assert.are_same (Layer.dump (layer), {
+      x = {
+        a = {
+          z = 1,
+        },
+        b = [[@x / a]],
+      }
+    })
   end)
 end)
 
@@ -241,8 +247,7 @@ describe ("issue #12", function ()
       }
     }
     assert.has.no.error (function ()
-      local Yaml = require "yaml"
-      Layer.dump (layer, Yaml.dump)
+      Layer.dump (layer)
     end)
   end)
 end)
