@@ -411,7 +411,7 @@ describe ("issue #19", function ()
       },
       name = "model",
     }
-    local r = Layer.encode (Layer.flatten (model))
+    Layer.encode (Layer.flatten (model))
   end)
 end)
 
@@ -465,7 +465,7 @@ describe ("issue #23", function ()
     local messages = Layer.key.messages
     local record   = Layer.new { name = "record" }
     record [checks] = {
-     check = function (proxy)
+     check = function ()
        return "checked", true
      end,
     }
