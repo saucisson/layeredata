@@ -537,8 +537,6 @@ end
     end,
   }
 
---_G.performs = {}
-
   function Proxy.apply (t)
     assert (getmetatable (t.proxy) == Proxy)
     local coroutine = t.iterate and coromake () or nil
