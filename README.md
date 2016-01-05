@@ -3,6 +3,9 @@
 `layeredata` is a Lua library that allows to represent data in several layers,
 and view them as merged.
 
+![Build Status](https://img.shields.io/travis/saucisson/lua-layeredata.svg)
+![Coverage Status](https://coveralls.io/github/saucisson/lua-layeredata?branch=master)
+
 # Install
 
 This module is available as a Lua rock:
