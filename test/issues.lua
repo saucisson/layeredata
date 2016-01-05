@@ -137,7 +137,7 @@ describe ("issue #8", function ()
     layer.root.a = {
       [refines] = { Layer.reference "mylayer".root },
     }
-    if #setmetatable ({}, { __len = function () return 1 end }) then
+    if #setmetatable ({}, { __len = function () return 1 end }) ~= 1 then
       assert.are.equal (Layer.len (layer.root.a.x), 1)
     else
       assert.are.equal (#layer.root.a.x, 1)
