@@ -5,7 +5,7 @@ local assert = require "luassert"
 --[==[
 describe ("issue #1", function ()
   it ("is fixed", function ()
-    local Layer = require "layeredata.make" (false)
+    local Layer = require "layeredata"
     local layer = Layer.new { name = "layer" }
     layer.__labels__ = { root }
     layer.x = {
@@ -24,7 +24,7 @@ end)
 
 describe ("issue #2", function ()
   it ("is fixed", function ()
-    local Layer  = require "layeredata.make" (false)
+    local Layer  = require "layeredata"
     local labels = Layer.key.labels
     local layer  = Layer.new { name = "layer" }
     layer.x = {
@@ -38,7 +38,7 @@ end)
 
 describe ("issue #3", function ()
   it ("is updated and fixed", function ()
-    local Layer   = require "layeredata.make" (false)
+    local Layer   = require "layeredata"
     local refines = Layer.key.refines
     local back    = Layer.new { name = "back" }
     local front   = Layer.new { name = "front" }
@@ -51,7 +51,7 @@ end)
 
 describe ("issue #4", function ()
   it ("is fixed", function ()
-    local Layer  = require "layeredata.make" (false)
+    local Layer  = require "layeredata"
     local labels = Layer.key.labels
     local layer  = Layer.new { name = "layer" }
     layer.a = {
@@ -66,7 +66,7 @@ end)
 
 describe ("issue #5", function ()
   it ("is fixed", function ()
-    local Layer  = require "layeredata.make" (false)
+    local Layer  = require "layeredata"
     local labels = Layer.key.labels
     local layer  = Layer.new { name = "layer" }
     layer.x = {
@@ -82,7 +82,7 @@ end)
 
 describe ("issue #6", function ()
   it ("is fixed", function ()
-    local Layer   = require "layeredata.make" (false)
+    local Layer   = require "layeredata"
     local default = Layer.key.default
     local refines = Layer.key.refines
     local layer   = Layer.new { name = "layer" }
@@ -102,7 +102,7 @@ end)
 
 describe ("issue #7", function ()
   it ("is fixed", function ()
-    local Layer  = require "layeredata.make" (false)
+    local Layer  = require "layeredata"
     local labels = Layer.key.labels
     local layer  = Layer.new { name = "layer" }
     layer.x = {
@@ -113,14 +113,20 @@ describe ("issue #7", function ()
       b = Layer.reference "x".a,
     }
     assert (Layer.encode (layer):match "%[labels%]")
-    local Yaml = require "yaml"
-    assert (not Layer.dump (layer, Yaml.dump):match "%[labels%]")
+    assert.are_same (Layer.dump (layer), {
+      x = {
+        a = {
+          z = 1,
+        },
+        b = [[@x / a]],
+      }
+    })
   end)
 end)
 
 describe ("issue #8", function ()
   it ("is fixed", function ()
-    local Layer   = require "layeredata.make" (false)
+    local Layer   = require "layeredata"
     local labels  = Layer.key.labels
     local refines = Layer.key.refines
     local layer   = Layer.new { name = "mylayer" }
@@ -131,13 +137,17 @@ describe ("issue #8", function ()
     layer.root.a = {
       [refines] = { Layer.reference "mylayer".root },
     }
-    assert.are.equal (Layer.size (layer.root.a.x), 1)
+    if #setmetatable ({}, { __len = function () return 1 end }) then
+      assert.are.equal (Layer.len (layer.root.a.x), 1)
+    else
+      assert.are.equal (#layer.root.a.x, 1)
+    end
   end)
 end)
 
 describe ("issue #9", function ()
   it ("is fixed", function ()
-    local Layer    = require "layeredata.make" (false)
+    local Layer    = require "layeredata"
     local checks   = Layer.key.checks
     local refines  = Layer.key.refines
     local messages = Layer.key.messages
@@ -172,7 +182,7 @@ end)
 
 describe ("issue #10", function ()
   it ("is fixed", function ()
-    local Layer   = require "layeredata.make" (false)
+    local Layer   = require "layeredata"
     local labels  = Layer.key.labels
     local refines = Layer.key.refines
     local a = Layer.new { name = "a" }
@@ -202,7 +212,7 @@ end)
 
 describe ("issue #11", function ()
   it ("is fixed", function ()
-    local Layer   = require "layeredata.make" (false)
+    local Layer   = require "layeredata"
     local labels  = Layer.key.labels
     local refines = Layer.key.refines
     local layer   = Layer.new { name = "layer" }
@@ -225,7 +235,7 @@ end)
 
 describe ("issue #12", function ()
   it ("is fixed", function ()
-    local Layer   = require "layeredata.make" (false)
+    local Layer   = require "layeredata"
     local labels  = Layer.key.labels
     local refines = Layer.key.refines
     local layer   = Layer.new { name = "layer" }
@@ -241,15 +251,14 @@ describe ("issue #12", function ()
       }
     }
     assert.has.no.error (function ()
-      local Yaml = require "yaml"
-      Layer.dump (layer, Yaml.dump)
+      Layer.dump (layer)
     end)
   end)
 end)
 
 describe ("issue #13", function ()
   it ("is fixed", function ()
-    local Layer = require "layeredata.make" (false)
+    local Layer   = require "layeredata"
     local labels  = Layer.key.labels
     local default = Layer.key.default
     local refines = Layer.key.refines
@@ -273,7 +282,7 @@ end)
 
 describe ("issue #14", function ()
   it ("is fixed", function ()
-    local Layer   = require "layeredata.make" (false)
+    local Layer   = require "layeredata"
     local labels  = Layer.key.labels
     local refines = Layer.key.refines
     local layer   = Layer.new { name = "layer" }
@@ -299,7 +308,7 @@ end)
 
 describe ("issue #15", function ()
   it ("is fixed", function ()
-    local Layer  = require "layeredata.make" (false)
+    local Layer  = require "layeredata"
     local labels = Layer.key.labels
     local layer  = Layer.new { name = "layer" }
     layer.a = {
@@ -312,7 +321,7 @@ end)
 
 describe ("issue #16", function ()
   it ("is fixed", function ()
-    local Layer   = require "layeredata.make" (false)
+    local Layer   = require "layeredata"
     local refines = Layer.key.refines
     local a       = Layer.new { name = "a" }
     local b       = Layer.new { name = "b" }
@@ -332,20 +341,14 @@ end)
 
 describe ("issue #17", function ()
   it ("is irrelevant", function ()
-    local Layer = require "layeredata.make"
-    assert.is_falsy (pcall (Layer, {
-      checks   = "CHECKS",
-      default  = "DEFAULT",
-      label    = "LABEL",
-      messages = "MESSAGES",
-      refines  = "REFINES",
-    }, false))
+    local Layer = require "layeredata"
+    assert.is_truthy (type (Layer) ~= "function")
   end)
 end)
 
 describe ("issue #18", function ()
   it ("is fixed", function ()
-    local Layer  = require "layeredata.make" (false)
+    local Layer  = require "layeredata"
     local labels = Layer.key.labels
     local layer  = Layer.new { layer = "layer" }
     layer.a = {
@@ -360,7 +363,7 @@ end)
 
 describe ("issue #19", function ()
   it ("is fixed", function ()
-    local Layer   = require "layeredata.make" (false)
+    local Layer   = require "layeredata"
     local labels  = Layer.key.labels
     local meta    = Layer.key.meta
     local checks  = Layer.key.checks
@@ -417,13 +420,13 @@ describe ("issue #19", function ()
       },
       name = "model",
     }
-    local r = Layer.encode (Layer.flatten (model))
+    Layer.encode (Layer.flatten (model))
   end)
 end)
 
 describe ("issue #20", function ()
   it ("is fixed", function ()
-    local Layer   = require "layeredata.make" (false)
+    local Layer   = require "layeredata"
     local meta    = Layer.key.meta
     local default = Layer.key.default
     local layer   = Layer.new { name = "layer" }
@@ -447,7 +450,7 @@ end)
 
 describe ("issue #22", function ()
   it ("is fixed", function ()
-    local Layer   = require "layeredata.make" (false)
+    local Layer   = require "layeredata"
     local meta    = Layer.key.meta
     local default = Layer.key.default
     local layer   = Layer.new { layer = "layer" }
@@ -464,14 +467,14 @@ end)
 
 describe ("issue #23", function ()
   it ("is fixed", function ()
-    local Layer    = require "layeredata.make" (false)
+    local Layer    = require "layeredata"
     local checks   = Layer.key.checks
     local default  = Layer.key.default
     local refines  = Layer.key.refines
     local messages = Layer.key.messages
     local record   = Layer.new { name = "record" }
     record [checks] = {
-     check = function (proxy)
+     check = function ()
        return "checked", true
      end,
     }
