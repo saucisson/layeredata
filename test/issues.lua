@@ -32,7 +32,7 @@ describe ("issue #2", function ()
       y = Layer.reference "x",
     }
     assert.are.equal (layer.x, layer.x.y)
-    assert (Layer.dump (layer):match "y")
+    assert (Layer.encode (layer):match "y")
   end)
 end)
 
@@ -112,8 +112,9 @@ describe ("issue #7", function ()
       },
       b = Layer.reference "x".a,
     }
-    assert (Layer.dump (layer):match [[b%s*=%s*"x%s*->%s*%[a%]"]])
-    assert (Layer.dump (layer, { computer_friendly = true }):match [[b%s*=%s*{]])
+    assert (Layer.encode (layer):match "%[labels%]")
+    local Yaml = require "yaml"
+    assert (not Layer.dump (layer, Yaml.dump):match "%[labels%]")
   end)
 end)
 
@@ -240,7 +241,8 @@ describe ("issue #12", function ()
       }
     }
     assert.has.no.error (function ()
-      Layer.toyaml (layer)
+      local Yaml = require "yaml"
+      Layer.dump (layer, Yaml.dump)
     end)
   end)
 end)
@@ -415,7 +417,7 @@ describe ("issue #19", function ()
       },
       name = "model",
     }
-    local r = Layer.dump (Layer.flatten (model))
+    local r = Layer.encode (Layer.flatten (model))
   end)
 end)
 
