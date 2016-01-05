@@ -19,8 +19,6 @@ observed through several layers.
 dependencies = {
   "c3       >= 1",
   "coronest >= 1",
-  "serpent  >= 0",
-  "yaml     >= 1",
 }
 
 build = {
