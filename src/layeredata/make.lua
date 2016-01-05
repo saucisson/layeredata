@@ -1,44 +1,42 @@
 local coromake = require "coroutine.make"
 local c3       = require "c3"
-local serpent  = require "serpent"
 
-return function (special_keys, debug)
-  assert (special_keys == nil or type (special_keys) == "table")
-  special_keys = special_keys or {}
-
-  local Layer              = setmetatable ({}, {
+return function (debug)
+  assert (type (debug) == "nil" or type (debug) == "boolean")
+  local Layer = setmetatable ({}, {
     __tostring = function () return "Layer" end
   })
-  local Proxy              = setmetatable ({}, {
+  local Proxy = setmetatable ({}, {
     __tostring = function () return "Proxy" end
   })
-  local Reference          = setmetatable ({}, {
+  local Reference = setmetatable ({}, {
     __tostring = function () return "Reference" end
   })
-  local IgnoreKeys = {}
-  if not debug then
-    IgnoreKeys.__mode = "k"
-  end
+  local Key = setmetatable ({}, {
+    __tostring = function () return "Key" end
+  })
+  local IgnoreKeys   = {}
   local IgnoreValues = {}
   if not debug then
+    IgnoreKeys  .__mode = "k"
     IgnoreValues.__mode = "v"
   end
 
-  Proxy.key = {
-    checks   = special_keys.checks   or "__checks__",
-    default  = special_keys.default  or "__default__",
-    labels   = special_keys.labels   or "__labels__",
-    messages = special_keys.messages or "__messages__",
-    meta     = special_keys.meta     or "__meta__",
-    refines  = special_keys.refines  or "__refines__",
-  }
-
-  Proxy.tag = {
+  local Read_Only = {}
+  Read_Only.__index    = assert
+  Read_Only.__newindex = assert
+  Proxy.key = setmetatable ({
+    checks   = setmetatable ({}, Key),
+    default  = setmetatable ({}, Key),
+    labels   = setmetatable ({}, Key),
+    messages = setmetatable ({}, Key),
+    meta     = setmetatable ({}, Key),
+    refines  = setmetatable ({}, Key),
+  }, Read_Only)
+  Proxy.tag = setmetatable ({
     null      = {},
     computing = {},
-  }
-
-  local unpack = table.unpack or unpack
+  }, Read_Only)
 
   function Layer.__new (t)
     assert (type (t) == "table")
@@ -77,6 +75,9 @@ return function (special_keys, debug)
     end
     if not seen then
       seen = {}
+    end
+    if getmetatable (data) == Key then
+      return data
     end
     if seen [data] then
       return seen [data]
@@ -137,15 +138,6 @@ return function (special_keys, debug)
     }, Proxy)
   end
 
-  function Proxy.__serialize (proxy)
-    assert (getmetatable (proxy) == Proxy)
-    return {
-      __proxy = true,
-      __layer = proxy.__layer.__name,
-      unpack (proxy.__keys),
-    }
-  end
-
   function Proxy.__tostring (proxy)
     assert (getmetatable (proxy) == Proxy)
     local result = {}
@@ -159,70 +151,154 @@ return function (special_keys, debug)
     return table.concat (result, " ")
   end
 
-  function Proxy.dump (proxy, options)
+  function Proxy.decode (string, layers)
+    layers = layers or {}
+    local loaded = assert (loadstring (string))
+    local func   = assert (loaded ())
+    return func (Proxy, layers)
+  end
+
+  function Proxy.encode (proxy)
     assert (getmetatable (proxy) == Proxy)
-    if type (options) ~= "table" then
-      options = {}
+    local key_name = {}
+    for k, v in pairs (Proxy.key) do
+      key_name [v] = k
     end
-    local Layer_serialize     = Layer    .__serialize
-    local Proxy_serialize     = Proxy    .__serialize
-    local Reference_serialize = Reference.__serialize
-    if not options.computer_friendly then
-      Layer    .__serialize = nil
-      Proxy    .__serialize = nil
-      Reference.__serialize = nil
+    local function convert (x, is_key, indent)
+      indent = indent or ""
+      if getmetatable (x) == Key then
+        return is_key
+           and indent .. "[" .. key_name [x] .. "]"
+            or key_name [x]
+      elseif getmetatable (x) == Reference then
+        assert (not is_key)
+        local result = "Layer.reference ("
+          .. (x.__from and string.format ("%q", x.__from) or tostring (x.__from))
+          .. ")"
+        for _, y in ipairs (x.__keys) do
+          result = result .. " [" .. convert (y) .. "]"
+        end
+        return result
+      elseif getmetatable (x) == Proxy then
+        assert (not is_key)
+        local result = "Layers [" .. string.format ("%q", x.__layer.__name) .. "]"
+        for _, y in ipairs (x.__keys) do
+          result = result .. " [" .. convert (y) .. "]"
+        end
+        return result
+      elseif type (x) == "table" then
+        assert (not is_key)
+        local subresults = {}
+        local seen       = {}
+        local nindent    = indent .. "  "
+        for k, v in pairs (x) do
+          if getmetatable (k) == Key then
+            subresults [#subresults+1] = convert (k, true, nindent) .. " = " .. convert (v, false, nindent)
+            seen [k] = true
+          end
+        end
+        for k, v in ipairs (x) do
+          subresults [#subresults+1] = nindent .. convert (v, false, nindent)
+          seen [k] = true
+        end
+        for _, oftype in ipairs { "number", "boolean", "string" } do
+          for k, v in pairs (x) do
+            if type (k) == oftype and not seen [k] then
+              subresults [#subresults+1] = convert (k, true, nindent) .. " = " .. convert (v, false, nindent)
+              seen [k] = true
+            end
+          end
+        end
+        for k in pairs (x) do
+          assert (seen [k])
+        end
+        return "{\n" .. table.concat (subresults, ",\n") .. "\n" .. indent .. "}"
+      elseif type (x) == "string" then
+        return is_key
+           and indent .. (x:match "^[_%a][_%w]*$" and x or "[" .. string.format ("%q", x) .. "]")
+            or string.format ("%q", x)
+      elseif type (x) == "number" then
+        return is_key
+           and indent .. "[" .. tostring (x) .. "]"
+            or tostring (x)
+      elseif type (x) == "boolean" then
+        return is_key
+           and indent .. "[" .. tostring (x) .. "]"
+            or tostring (x)
+      elseif type (x) == "function" then
+        assert (not is_key)
+        return indent .. string.format ("%q", string.dump (x))
+      else
+        assert (false)
+      end
     end
-    local result = serpent.dump (Proxy.export (proxy), {
-      indent   = "  ",
-      comment  = false,
-      sortkeys = true,
-      compact  = false,
-    })
-    if not options.computer_friendly then
-      Layer    .__serialize = Layer_serialize
-      Proxy    .__serialize = Proxy_serialize
-      Reference.__serialize = Reference_serialize
+    local result = [[
+return function (Layer, Layers)
+{{{LOCALS}}}
+  return Layer.new {
+    name = {{{NAME}}},
+    data = {{{BODY}}},
+  }
+end
+    ]]
+    local locals    = {}
+    local localsize = 0
+    for k in pairs (Proxy.key) do
+      localsize = math.max (localsize, #k)
     end
+    for k in pairs (Proxy.key) do
+      local pad = ""
+      for _ = #k+1, localsize do
+        pad = pad .. " "
+      end
+      locals [#locals+1] = "  local " .. k .. pad .. " = Layer.key." .. k
+    end
+    result = result:gsub ("{{{NAME}}}"  , string.format ("%q", proxy.__layer.__name))
+    result = result:gsub ("{{{LOCALS}}}", table.concat (locals, "\n"))
+    result = result:gsub ("{{{BODY}}}"  , convert (Proxy.export (proxy), false, "    "))
     return result
   end
 
-  function Proxy.toyaml (proxy, options)
+  function Proxy.dump (proxy, f)
     assert (getmetatable (proxy) == Proxy)
-    local yaml     = require "yaml"
-    local dumped   = Proxy.dump (proxy, options)
-    local ok, data = serpent.load (dumped, { safe = false })
-    assert (ok)
-    local bodies = {}
-    local function get_body (t)
-      if bodies [t] then
-        return bodies [t]
-      end
-      local result = t
-      local info = _G.debug.getinfo (t)
-      if info and info.what == "Lua" then
-        result = info.source ..
+    local function convert (x, is_key)
+      if getmetatable (x) == Key then
+        assert (false)
+      elseif getmetatable (x) == Reference then
+        assert (not is_key)
+        local result = "@" .. string.format ("%q", x.__from)
+        for _, y in ipairs (x.__keys) do
+          result = result .. " [" .. tostring (convert (y)) .. "]"
+        end
+        return result
+      elseif type (x) == "table" then
+        assert (not is_key)
+        local subresults = {}
+        for k, v in pairs (x) do
+          if getmetatable (k) ~= Key then
+            subresults [convert (k, true)] = convert (v)
+          end
+        end
+        return subresults
+      elseif type (x) == "string" then
+        return x
+      elseif type (x) == "number" then
+        return x
+      elseif type (x) == "boolean" then
+        return x
+      elseif type (x) == "function" then
+        assert (not is_key)
+        local info = _G.debug.getinfo (x)
+        assert (info and info.what == "Lua")
+        return info.source ..
                  " [" .. tostring (info.linedefined) ..
                  ".." .. tostring (info.lastlinedefined) ..
                   "]"
+      else
+        assert (false)
       end
-      bodies [t] = result
-      return result
     end
-    local function f (t)
-      if type (t) == "function" then
-        return get_body (t)
-      elseif type (t) ~= "table" then
-        return t
-      end
-      if #t == 1 then
-        return t [1]
-      end
-      for k, v in pairs (t) do
-        t [k] = f (v)
-      end
-      return t
-    end
-    return yaml.dump (f (data))
+    return f (convert (Proxy.export (proxy)))
   end
 
   function Proxy.sub (proxy, key)
@@ -295,8 +371,6 @@ return function (special_keys, debug)
     indent = ""
   end
 
---  _G.indexes = {}
-
   function Proxy.__index (proxy, key)
     assert (getmetatable (proxy) == Proxy)
     proxy = Proxy.sub (proxy, key)
@@ -349,7 +423,10 @@ return function (special_keys, debug)
 
   function Proxy.__newindex (proxy, key, value)
     assert (getmetatable (proxy) == Proxy)
-    assert (type (key) ~= "table" or getmetatable (key) == Proxy or getmetatable (key) == Reference)
+    assert ( type (key) ~= "table"
+          or getmetatable (key) == Proxy
+          or getmetatable (key) == Reference
+          or getmetatable (key) == Key)
     proxy = Proxy.sub (proxy, key)
     key   = Layer.import (key  )
     value = Layer.import (value)
@@ -459,8 +536,6 @@ return function (special_keys, debug)
       return result
     end,
   }
-
---_G.performs = {}
 
   function Proxy.apply (t)
     assert (getmetatable (t.proxy) == Proxy)
@@ -866,15 +941,6 @@ return function (special_keys, debug)
       current = current [rkeys [i]]
     end
     return current
-  end
-
-  function Reference.__serialize (reference)
-    assert (getmetatable (reference) == Reference)
-    return {
-      __reference = true,
-      from        = reference.__from,
-      unpack (reference.__keys),
-    }
   end
 
   function Reference.__tostring (reference)
