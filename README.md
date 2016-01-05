@@ -8,26 +8,27 @@ and view them as merged.
 
 # Install
 
-This module is available as a Lua rock:
+This module is available in [luarocks](https://luarocks.org):
 ```bash
   luarocks install layeredata
 ```
 
-To manually install it, simply copy the `src/layeredata` folder in your
+To manually install it, simply copy the `src/layeredata.lua` file in your
 `LUA_PATH`:
-
 ```bash
   cp -r src/layeredata <target>
 ```
 
-# Import
+# Usage
 
+First, import the module:
 ```lua
-  local Layeredata = require "layeredata"
+  local Layer = require "layeredata"
 ```
 
 # Test
 
+Tests are written for [busted](http://olivinelabs.com/busted).
 ```bash
   busted test/issues.lua
 ```
