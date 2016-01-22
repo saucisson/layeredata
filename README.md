@@ -3,6 +3,8 @@
 
 # Layered Data
 
+[![Join the chat at https://gitter.im/saucisson/lua-layeredata](https://badges.gitter.im/saucisson/lua-layeredata.svg)](https://gitter.im/saucisson/lua-layeredata?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 `layeredata` is a Lua library that allows to represent data in several layers,
 and view them as merged.
 
