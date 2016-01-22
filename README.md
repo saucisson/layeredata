@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/saucisson/lua-layeredata.svg?branch=master)](https://travis-ci.org/saucisson/lua-layeredata)
 [![Coverage Status](https://coveralls.io/repos/saucisson/lua-layeredata/badge.svg?branch=master&service=github)](https://coveralls.io/github/saucisson/lua-layeredata?branch=master)
+[![Join the chat at https://gitter.im/saucisson/lua-layeredata](https://badges.gitter.im/saucisson/lua-layeredata.svg)](https://gitter.im/saucisson/lua-layeredata?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 # Layered Data
 
