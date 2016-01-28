@@ -18,7 +18,7 @@ layer1.type1 = {
     set_type = {},
     set = {
       object_1 = {
-        __refines__ = {
+        [Layer.key.refines] = {
           _.type1.type1_type.set_type,
         },
       },
@@ -30,12 +30,12 @@ layer2.__depends__ = {
   layer1,
 }
 layer2.type2 = {
-  __refines__ = {
+  [Layer.key.refines] = {
     _.type1.type1_type
   },
   set = {
     object_2 = {
-      __refines__ = {
+      [Layer.key.refines] = {
         _.type1.type1_type.set_type,
       },
     },

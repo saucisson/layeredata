@@ -7,9 +7,9 @@ describe ("issue #1", function ()
   it ("is fixed", function ()
     local Layer = require "layeredata"
     local layer = Layer.new { name = "layer" }
-    layer.__labels__ = { root }
+    layer[Layer.key.labels] = { root }
     layer.x = {
-      __refines__ = {
+      [Layer.key.refines] = {
         Layer.reference "root".x.y,
       },
       y = {
