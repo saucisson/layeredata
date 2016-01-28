@@ -387,9 +387,11 @@ function Proxy.check (proxy)
   end
   for _, f in Proxy.__pairs (checks) do
     assert (type (f) == "function")
-    local id, message = f (proxy)
-    if id ~= nil then
-      messages [id] = message
+    local co = Layer.coroutine.wrap (function ()
+      return f (proxy)
+    end)
+    for id, data in co do
+      messages [id] = data or {}
     end
   end
   if Proxy.__pairs (messages) (messages) == nil then
