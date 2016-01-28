@@ -466,9 +466,9 @@ function Proxy.__newindex (proxy, key, value)
         or getmetatable (key) == Proxy
         or getmetatable (key) == Reference
         or getmetatable (key) == Key)
-  proxy = Proxy.sub (proxy, key)
   key   = Layer.import (key  )
   value = Layer.import (value)
+  proxy = Proxy.sub (proxy, key)
   local p, r = Proxy.apply { proxy = proxy, resolve = false, iterate = false, }
   if r == nil then
     p = proxy
