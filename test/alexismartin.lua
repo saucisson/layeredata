@@ -1,4 +1,6 @@
+local Layer = require "layeredata"
 local Serpent = require "serpent"
+
 local function dump (x)
   return Serpent.dump (x, {
     indent   = "  ",
