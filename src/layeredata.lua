@@ -38,21 +38,47 @@ Layer.tag = setmetatable ({
   computing = {},
 }, Read_Only)
 
+Layer.coroutine = coromake ()
+
 function Layer.new (t, options)
   assert (type (t) == "table")
   assert (options == nil or type (options) == "table")
   options = options or {}
   local layer = setmetatable ({
-    __name    = t.name,
-    __data    = Layer.import (t.data or {}),
-    __root    = false,
-    __proxies = setmetatable ({}, IgnoreValues),
-    __debug   = options.debug,
-    __indent  = {},
+    __name      = t.name,
+    __data      = Layer.import (t.data or {}),
+    __root      = false,
+    __proxies   = setmetatable ({}, IgnoreValues),
+    __debug     = options.debug,
+    __indent    = {},
+    __observers = {},
   }, Layer)
   local proxy = Proxy.__new (layer)
   layer.__root = proxy
   return proxy
+end
+
+local Observer = {}
+
+function Observer.enable (observer)
+  observer.layer.__observers [observer] = true
+  return observer
+end
+
+function Observer.disable (observer)
+  observer.layer.__observers [observer] = nil
+  return observer
+end
+
+function Layer.observe (proxy, f)
+  assert (getmetatable (proxy) == Proxy)
+  assert (type (f) == "function" or (getmetatable (f) and getmetatable (f).__call))
+  local layer = proxy.__layer
+  local result = setmetatable ({
+    layer   = layer,
+    handler = f,
+  }, Observer)
+  return result:enable ()
 end
 
 function Layer.clear_caches (proxy)
@@ -361,9 +387,11 @@ function Proxy.check (proxy)
   end
   for _, f in Proxy.__pairs (checks) do
     assert (type (f) == "function")
-    local id, message = f (proxy)
-    if id ~= nil then
-      messages [id] = message
+    local co = Layer.coroutine.wrap (function ()
+      return f (proxy)
+    end)
+    for id, data in co do
+      messages [id] = data or {}
     end
   end
   if Proxy.__pairs (messages) (messages) == nil then
@@ -438,9 +466,9 @@ function Proxy.__newindex (proxy, key, value)
         or getmetatable (key) == Proxy
         or getmetatable (key) == Reference
         or getmetatable (key) == Key)
-  proxy = Proxy.sub (proxy, key)
   key   = Layer.import (key  )
   value = Layer.import (value)
+  proxy = Proxy.sub (proxy, key)
   local p, r = Proxy.apply { proxy = proxy, resolve = false, iterate = false, }
   if r == nil then
     p = proxy
@@ -459,6 +487,9 @@ function Proxy.__newindex (proxy, key, value)
   current [key] = value
   if proxy.__cache then
     Layer.clear_caches (proxy)
+  end
+  for observer in pairs (proxy.__layer.__observers) do
+    observer (proxy)
   end
 end
 

@@ -156,7 +156,7 @@ describe ("issue #9", function ()
       [checks] = {
         function (proxy)
           if proxy.final and not proxy.value then
-            return "id", "message"
+            Layer.coroutine.yield ("id", "message")
           end
         end
       },
@@ -475,7 +475,7 @@ describe ("issue #23", function ()
     local record   = Layer.new { name = "record" }
     record [checks] = {
      check = function ()
-       return "checked", true
+       Layer.coroutine.yield ("checked", true)
      end,
     }
     local model = Layer.new { name = "instance" }
