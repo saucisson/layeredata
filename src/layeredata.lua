@@ -537,6 +537,16 @@ function Proxy.is_prefix (lhs, rhs)
   return true
 end
 
+function Proxy.has_meta (proxy)
+  assert (getmetatable (proxy) == Proxy)
+  for i = 1, #proxy.__keys do
+    if proxy.__keys [i] == Proxy.key.meta then
+      return true
+    end
+  end
+  return false
+end
+
 function Proxy.is_reference (proxy)
   assert (getmetatable (proxy) == Proxy)
   local _, r = Proxy.apply { proxy = proxy, resolve = false, iterate = false, }
