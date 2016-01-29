@@ -575,6 +575,26 @@ function Proxy.__le (lhs, rhs)
   end
 end
 
+function Proxy.__mod (proxy, n)
+  assert (getmetatable (proxy) == Proxy)
+  assert (type (n) == "number")
+  if n >= 0 then
+    assert (n <= #proxy.__keys)
+    local result = Proxy.__new (proxy.__layer)
+    for i = 1, n do
+      result = Proxy.sub (result, proxy.__keys [i])
+    end
+    return result
+  elseif n < 0 then
+    assert (n <= #proxy.__keys)
+    local result = Proxy.__new (proxy.__layer)
+    for i = 1, #proxy.__keys + n do
+      result = Proxy.sub (result, proxy.__keys [i])
+    end
+    return result
+  end
+end
+
 Proxy.refines = c3.new {
   superclass = function (proxy)
     assert (getmetatable (proxy) == Proxy)
