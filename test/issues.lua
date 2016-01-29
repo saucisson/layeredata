@@ -501,7 +501,7 @@ describe ("issue #38", function ()
       a = {},
     }
     layer.b = {}
-    assert.is_true  (Layer.Proxy.has_meta (layer [Layer.Proxy.meta].a))
+    assert.is_true  (Layer.Proxy.has_meta (layer [Layer.key.meta].a))
     assert.is_false (Layer.Proxy.has_meta (layer.b))
   end)
 end)

@@ -540,7 +540,7 @@ end
 function Proxy.has_meta (proxy)
   assert (getmetatable (proxy) == Proxy)
   for i = 1, #proxy.__keys do
-    if proxy.__keys [i] == Proxy.key.meta then
+    if proxy.__keys [i] == Layer.key.meta then
       return true
     end
   end
