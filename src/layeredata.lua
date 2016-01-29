@@ -10,7 +10,9 @@ local Proxy = setmetatable ({}, {
 local Reference = setmetatable ({}, {
   __tostring = function () return "Reference" end
 })
-local Key = setmetatable ({}, {
+local Key = setmetatable ({
+  __tostring = function (self) return "-" .. self.name .. "-" end
+}, {
   __tostring = function () return "Key" end
 })
 
@@ -25,12 +27,12 @@ local Read_Only = {
 Reference.memo = setmetatable ({}, IgnoreValues)
 
 Layer.key = setmetatable ({
-  checks   = setmetatable ({}, Key),
-  default  = setmetatable ({}, Key),
-  labels   = setmetatable ({}, Key),
-  messages = setmetatable ({}, Key),
-  meta     = setmetatable ({}, Key),
-  refines  = setmetatable ({}, Key),
+  checks   = setmetatable ({ name = "checks"   }, Key),
+  default  = setmetatable ({ name = "default"  }, Key),
+  labels   = setmetatable ({ name = "labels"   }, Key),
+  messages = setmetatable ({ name = "messages" }, Key),
+  meta     = setmetatable ({ name = "meta"     }, Key),
+  refines  = setmetatable ({ name = "refines"  }, Key),
 }, Read_Only)
 
 Layer.tag = setmetatable ({
