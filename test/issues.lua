@@ -492,3 +492,16 @@ describe ("issue #23", function ()
     assert.is_nil  (model [messages])
   end)
 end)
+
+describe ("issue #38", function ()
+  it ("is fixed", function ()
+    local Layer = require "layeredata"
+    local layer = Layer.new { name = "layer" }
+    layer [Layer.key.meta] = {
+      a = {},
+    }
+    layer.b = {}
+    assert.is_true  (Layer.Proxy.has_meta (layer [Layer.Proxy.meta].a))
+    assert.is_false (Layer.Proxy.has_meta (layer.b))
+  end)
+end)
