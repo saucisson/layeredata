@@ -268,10 +268,10 @@ function Layer.encode (proxy)
   local result = [[
 return function (Layer, Layers)
 {{{LOCALS}}}
-return Layer.new {
-  name = {{{NAME}}},
-  data = {{{BODY}}},
-}
+  return Layer.new {
+    name = {{{NAME}}},
+    data = {{{BODY}}},
+  }
 end
   ]]
   local locals    = {}
