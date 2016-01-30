@@ -55,13 +55,11 @@ Layer.coroutine = coromake ()
 function Layer.new (t, options)
   assert (type (t) == "table")
   assert (options == nil or type (options) == "table")
-  options = options or {}
   local layer = setmetatable ({
     __name      = t.name,
     __data      = Layer.import (t.data or {}),
     __root      = false,
     __proxies   = setmetatable ({}, IgnoreValues),
-    __debug     = options.debug,
     __indent    = {},
     __observers = {},
   }, Layer)
@@ -95,9 +93,6 @@ end
 
 function Layer.clear_caches (proxy)
   assert (proxy == nil or getmetatable (proxy) == Proxy)
-  if proxy and proxy.__layer.__debug then
-    print ("Clear Caches:", proxy)
-  end
   Proxy.refines:clear ()
   Layer.caches = {
     index   = setmetatable ({}, IgnoreKeys),
@@ -413,7 +408,6 @@ end
 
 function Proxy.__index (proxy, key)
   assert (getmetatable (proxy) == Proxy)
-  local layer = proxy.__layer
   proxy = Proxy.sub (proxy, key)
   local cproxy = proxy
   if proxy.__cache then
@@ -427,15 +421,6 @@ function Proxy.__index (proxy, key)
       return cached
     end
     cache [proxy] = Layer.tag.computing
-  end
-  if layer.__debug then
-    local co = coroutine.running ()
-    if not layer.__indent [co] then
-      layer.__indent [co] = ""
-    end
-    local indent = layer.__indent [co]
-    print (">", indent .. tostring (proxy))
-    layer.__indent [co] = indent .. "  "
   end
   local result
   while true do
@@ -456,14 +441,6 @@ function Proxy.__index (proxy, key)
       cache [cproxy] = Layer.tag.null
     else
       cache [cproxy] = result
-    end
-  end
-  if layer.__debug then
-    local co     = coroutine.running ()
-    local indent = layer.__indent [co]
-    layer.__indent [co] = indent:sub (1, #indent-2)
-    if layer.__indent [co] == "" then
-      layer.__indent [co] = nil
     end
   end
   if getmetatable (result) == Proxy then
