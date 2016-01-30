@@ -668,7 +668,7 @@ function Proxy.apply (t)
       end
       if current ~= nil then
         if coroutine then
-          coroutine.yield (proxy, real, current)
+          coroutine.yield (real, current)
         else
           if cache then
             cache [real] [proxy] = {
@@ -807,8 +807,7 @@ function Proxy.apply (t)
   end
   if coroutine then
     return coroutine.wrap (function ()
-      local _, r, c = perform (t.proxy, t.proxy)
-      return r, c
+      perform (t.proxy, t.proxy)
     end)
   else
     local _, r, c = perform (t.proxy, t.proxy)
