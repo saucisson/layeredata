@@ -24,6 +24,16 @@ local Read_Only = {
   __newindex = assert,
 }
 
+local Cache = {
+  __mode = "k",
+}
+
+function Cache.__index (cache, key)
+  local result = setmetatable ({}, IgnoreKeys)
+  cache [key] = result
+  return result
+end
+
 Reference.memo = setmetatable ({}, IgnoreValues)
 
 Layer.key = setmetatable ({
@@ -96,8 +106,8 @@ function Layer.clear_caches (proxy)
     len     = setmetatable ({}, IgnoreKeys),
     check   = setmetatable ({}, IgnoreKeys),
     perform = {
-      noiterate_noresolve = setmetatable ({}, IgnoreKeys),
-      noiterate_resolve   = setmetatable ({}, IgnoreKeys),
+      noiterate_noresolve = setmetatable ({}, Cache),
+      noiterate_resolve   = setmetatable ({}, Cache),
     },
   }
 end
@@ -615,7 +625,7 @@ function Proxy.apply (t)
   assert (getmetatable (t.proxy) == Proxy)
   local coroutine = t.iterate and coromake () or nil
   local resolve   = t.resolve
-  local seen      = {}
+  local seen      = setmetatable ({}, Cache)
   local noback    = {}
   local cache
   if not t.iterate and resolve then
@@ -628,18 +638,19 @@ function Proxy.apply (t)
       cache = nil
     end
   end
-  local function perform (proxy)
+  local function perform (proxy, real)
     if cache then
-      local cached = cache [proxy]
+      local cached = cache [real] [proxy]
       if cached then
-        return cached.proxy, cached.current
+        return cached.proxy, cached.real, cached.current
       end
     end
     assert (getmetatable (proxy) == Proxy)
-    if seen [proxy] then
+    assert (getmetatable (real ) == Proxy)
+    if seen [real] [proxy] then
       return nil
     end
-    seen [proxy] = true
+    seen [real] [proxy] = true
     local keys   = proxy.__keys
     -- Search in current layer:
     do
@@ -647,11 +658,8 @@ function Proxy.apply (t)
       for i = 1, #keys do
         current = current [keys [i]]
         if getmetatable (current) == Reference and resolve then
-          if i ~= #keys then
-            print (i, proxy, current)
-          end
           assert (i == #keys)
-          current = Reference.resolve (current, proxy)
+          current = Reference.resolve (current, real)
           break
         elseif i ~= #keys and type (current) ~= "table" then
           current = nil
@@ -660,65 +668,73 @@ function Proxy.apply (t)
       end
       if current ~= nil then
         if coroutine then
-          coroutine.yield (proxy, current)
+          coroutine.yield (proxy, real, current)
         else
           if cache then
-            cache [proxy] = {
+            cache [real] [proxy] = {
               proxy   = proxy,
+              real    = real,
               current = current,
             }
           end
-          return proxy, current
+          return proxy, real, current
         end
       end
     end
     -- Search in refined:
     local refines_proxies = {}
     do
-      local current = proxy
+      local current_p, current_r = proxy, real
+      assert (#current_p.__keys <= #current_r.__keys)
       if not coroutine then
-        current = current.__parent
+        current_p, current_r = current_p.__parent, current_r.__parent
       end
-      while current do
-        refines_proxies [#refines_proxies+1] = current
-        local key = keys [#current.__keys]
+      while current_p do
+        refines_proxies [#refines_proxies+1] = {
+          proxy = current_p,
+          real  = current_r,
+        }
+        local key = keys [#current_p.__keys]
         if key == Layer.key.checks or key == Layer.key.labels then
           refines_proxies [#refines_proxies] = nil
         elseif key == Layer.key.refines or key == Layer.key.messages then
           refines_proxies = {}
           break
         end
-        current = current.__parent
+        current_p, current_r = current_p.__parent, current_r.__parent
       end
     end
     for k = #refines_proxies, 1, -1 do
       local current = refines_proxies [k]
       if current then
-        local refines = Proxy.refines (current)
+        local refines = Proxy.refines (current.proxy)
         for i = #refines-1, 1, -1 do
           local refined = refines [i]
           if not noback [refines [i]] then
             noback [refines [i]] = true
-            for j = #current.__keys+1, #keys do
+            local current_p, current_r = current.proxy, current.real
+            for j = #current_p.__keys+1, #keys do
               local key = keys [j]
               refined = j == #keys
                     and Proxy.sub (refined, key)
                      or refined [key]
+              current_r = Proxy.sub (current_r, key)
               if getmetatable (refined) ~= Proxy then
                 refined = nil
                 break
               end
             end
             if refined then
-              local p, c = perform (refined)
+              local p, r, c = perform (refined, current_r)
               if p and not coroutine then
                 if cache then
-                  cache [proxy] = {
+                  cache [real] [proxy] = {
                     proxy   = p,
+                    real    = r,
                     current = c,
                   }
                 end
-                return p, c
+                return p, r, c
               end
             end
             noback [refines [i]] = nil
@@ -729,11 +745,15 @@ function Proxy.apply (t)
     -- Search in default:
     local default_proxies = {}
     do
-      local current = proxy
-      current = current.__parent
-      while current do
-        default_proxies [#default_proxies+1] = current
-        local key = keys [#current.__keys+1]
+      local current_p, current_r = proxy, real
+      assert (#current_p.__keys <= #current_r.__keys)
+      current_p, current_r = current_p.__parent, current_r.__parent
+      while current_p do
+        default_proxies [#default_proxies+1] = {
+          proxy = current_p,
+          real  = current_r,
+        }
+        local key = keys [#current_p.__keys+1]
         if key == Layer.key.checks
         or key == Layer.key.default
         or key == Layer.key.labels
@@ -745,19 +765,21 @@ function Proxy.apply (t)
           default_proxies = {}
           break
         end
-        current = current.__parent
+        current_p, current_r = current_p.__parent, current_r.__parent
       end
     end
     for k = #default_proxies-1, 1, -1 do
       local current = default_proxies [k]
       if current then
-        local default = current [Layer.key.default]
+        local current_p, current_r = current.proxy, current.real
+        local default = current_p [Layer.key.default]
         if default then
-          for j = #current.__keys+2, #keys do
+          for j = #current_p.__keys+2, #keys do
             local key = keys [j]
             default = j == #keys
                   and Proxy.sub (default, key)
                    or default [key]
+            current_r = Proxy.sub (current_r, key)
             if getmetatable (default) ~= Proxy then
               default = nil
               break
@@ -765,29 +787,32 @@ function Proxy.apply (t)
           end
         end
         if default then
-          local p, c = perform (default)
+          local p, r, c = perform (default, current_r)
           if p and not coroutine then
             if cache then
-              cache [proxy] = {
+              cache [real] [proxy] = {
                 proxy   = p,
+                real    = r,
                 current = c,
               }
             end
-            return p, c
+            return p, r, c
           end
         end
       end
     end
     if cache then
-      cache [proxy] = {}
+      cache [real] [proxy] = {}
     end
   end
   if coroutine then
     return coroutine.wrap (function ()
-      perform (t.proxy)
+      local _, r, c = perform (t.proxy, t.proxy)
+      return r, c
     end)
   else
-    return perform (t.proxy)
+    local _, r, c = perform (t.proxy, t.proxy)
+    return r, c
   end
 end
 
