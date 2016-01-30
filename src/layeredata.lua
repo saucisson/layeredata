@@ -600,19 +600,23 @@ Proxy.refines = c3.new {
 
 function Proxy.apply (t)
   assert (getmetatable (t.proxy) == Proxy)
-  local coroutine = t.iterate and coromake () or nil
-  local resolve   = t.resolve
-  local seen      = setmetatable ({}, Cache)
-  local noback    = {}
+  local coroutine   = t.iterate and coromake () or nil
+  local use_resolve = t.resolve
+  local use_refines = true
+  local use_default = true
+  local seen        = setmetatable ({}, Cache)
+  local noback      = {}
   local cache
-  if not t.iterate and resolve then
+  if not t.iterate and use_resolve then
     cache = Layer.caches.perform.noiterate_resolve
-  elseif not t.iterate and not resolve then
+  elseif not t.iterate and not use_resolve then
     cache = Layer.caches.perform.noiterate_noresolve
   end
   for i = 1, #t.proxy.__keys do
     if t.proxy.__keys [i] == Layer.key.messages then
-      cache = nil
+      cache       = nil
+      use_refines = false
+      use_default = false
     end
   end
   local function perform (proxy, real)
@@ -634,7 +638,7 @@ function Proxy.apply (t)
       local current = proxy.__layer.__data
       for i = 1, #keys do
         current = current [keys [i]]
-        if getmetatable (current) == Reference and resolve then
+        if getmetatable (current) == Reference and use_resolve then
           assert (i == #keys)
           current = Reference.resolve (current, real)
           break
@@ -659,108 +663,112 @@ function Proxy.apply (t)
       end
     end
     -- Search in refined:
-    local refines_proxies = {}
-    do
-      local current = proxy
-      if not coroutine then
-        current = current.__parent
-      end
-      while current do
-        refines_proxies [#refines_proxies+1] = current
-        local key = keys [#current.__keys]
-        if key == Layer.key.checks or key == Layer.key.labels then
-          refines_proxies [#refines_proxies] = nil
-        elseif key == Layer.key.refines or key == Layer.key.messages then
-          refines_proxies = {}
-          break
+    if use_refines then
+      local refines_proxies = {}
+      do
+        local current = proxy
+        if not coroutine then
+          current = current.__parent
         end
-        current = current.__parent
+        while current do
+          refines_proxies [#refines_proxies+1] = current
+          local key = keys [#current.__keys]
+          if key == Layer.key.checks or key == Layer.key.labels then
+            refines_proxies [#refines_proxies] = nil
+          elseif key == Layer.key.refines or key == Layer.key.messages then
+            refines_proxies = {}
+            break
+          end
+          current = current.__parent
+        end
       end
-    end
-    for k = #refines_proxies, 1, -1 do
-      local current = refines_proxies [k]
-      if current then
-        local refines = Proxy.refines (current)
-        for i = #refines-1, 1, -1 do
-          local refined = refines [i]
-          if not noback [refines [i]] then
-            noback [refines [i]] = true
-            for j = #current.__keys+1, #keys do
-              local key = keys [j]
-              refined = j == #keys
-                    and Proxy.sub (refined, key)
-                     or refined [key]
-              if getmetatable (refined) ~= Proxy then
-                refined = nil
-                break
-              end
-            end
-            if refined then
-              local p, r, c = perform (refined, real)
-              if p and not coroutine then
-                if cache then
-                  cache [real] [proxy] = {
-                    proxy   = p,
-                    real    = r,
-                    current = c,
-                  }
+      for k = #refines_proxies, 1, -1 do
+        local current = refines_proxies [k]
+        if current then
+          local refines = Proxy.refines (current)
+          for i = #refines-1, 1, -1 do
+            local refined = refines [i]
+            if not noback [refines [i]] then
+              noback [refines [i]] = true
+              for j = #current.__keys+1, #keys do
+                local key = keys [j]
+                refined = j == #keys
+                      and Proxy.sub (refined, key)
+                       or refined [key]
+                if getmetatable (refined) ~= Proxy then
+                  refined = nil
+                  break
                 end
-                return p, r, c
               end
+              if refined then
+                local p, r, c = perform (refined, real)
+                if p and not coroutine then
+                  if cache then
+                    cache [real] [proxy] = {
+                      proxy   = p,
+                      real    = r,
+                      current = c,
+                    }
+                  end
+                  return p, r, c
+                end
+              end
+              noback [refines [i]] = nil
             end
-            noback [refines [i]] = nil
           end
         end
       end
     end
     -- Search in default:
-    local default_proxies = {}
-    do
-      local current = proxy.__parent
-      while current do
-        default_proxies [#default_proxies+1] = current
-        local key = keys [#current.__keys+1]
-        if key == Layer.key.checks
-        or key == Layer.key.default
-        or key == Layer.key.labels
-        or key == Layer.key.meta
-        or key == Layer.key.refines
-        then
-          default_proxies [#default_proxies] = false
-        elseif key == Layer.key.messages then
-          default_proxies = {}
-          break
+    if use_default then
+      local default_proxies = {}
+      do
+        local current = proxy.__parent
+        while current do
+          default_proxies [#default_proxies+1] = current
+          local key = keys [#current.__keys+1]
+          if key == Layer.key.checks
+          or key == Layer.key.default
+          or key == Layer.key.labels
+          or key == Layer.key.meta
+          or key == Layer.key.refines
+          then
+            default_proxies [#default_proxies] = false
+          elseif key == Layer.key.messages then
+            default_proxies = {}
+            break
+          end
+          current = current.__parent
         end
-        current = current.__parent
       end
-    end
-    for k = #default_proxies-1, 1, -1 do
-      local current = default_proxies [k]
-      if current then
-        local default = current [Layer.key.default]
-        if default then
-          for j = #current.__keys+2, #keys do
-            local key = keys [j]
-            default = j == #keys
-                  and Proxy.sub (default, key)
-                   or default [key]
-            if getmetatable (default) ~= Proxy then
-              default = nil
-              break
+      for k = #default_proxies-1, 1, -1 do
+        local current = default_proxies [k]
+        if current then
+          local default = current [Layer.key.default]
+          if default then
+            for j = #current.__keys+2, #keys do
+              local key = keys [j]
+              default = j == #keys
+                    and Proxy.sub (default, key)
+                     or default [key]
+              if getmetatable (default) ~= Proxy then
+                default = nil
+                break
+              end
             end
           end
-        end
-        if default then
-          local p, r, c = perform (default, real)
-          if p and not coroutine then
-            if cache then
-              cache [real] [proxy] = {
-                proxy   = p,
-                real    = r,
-                current = c,
-              }
+          if default then
+            local p, r, c = perform (default, real)
+            if p and not coroutine then
+              if cache then
+                cache [real] [proxy] = {
+                  proxy   = p,
+                  real    = r,
+                  current = c,
+                }
+              end
+              return p, r, c
             end
-            return p, r, c
           end
         end
       end
