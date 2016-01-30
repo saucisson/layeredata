@@ -504,4 +504,28 @@ describe ("issue #38", function ()
     assert.is_true  (Layer.Proxy.has_meta (layer [Layer.key.meta].a))
     assert.is_false (Layer.Proxy.has_meta (layer.b))
   end)
+
+  describe ("issue #39", function ()
+    it ("is fixed", function ()
+      local Layer = require "layeredata"
+      local l1    = Layer.new {
+        name = "l1",
+        data = {
+          [Layer.key.labels ] = { l1 = true },
+          [Layer.key.meta   ] = {
+            ref = Layer.reference "l1".t,
+          },
+        },
+      }
+      local l2 = Layer.new {
+        name = "l2",
+        data = {
+          t = {},
+          [Layer.key.labels ] = { l2 = true },
+          [Layer.key.refines] = { l1 },
+        }
+      }
+      assert.are.equal (l2 [Layer.key.meta].ref, l2.t)
+    end)
+  end)
 end)
