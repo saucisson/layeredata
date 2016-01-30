@@ -684,48 +684,42 @@ function Proxy.apply (t)
     -- Search in refined:
     local refines_proxies = {}
     do
-      local current_p, current_r = proxy, real
-      assert (#current_p.__keys <= #current_r.__keys)
+      local current = proxy
       if not coroutine then
-        current_p, current_r = current_p.__parent, current_r.__parent
+        current = current.__parent
       end
-      while current_p do
-        refines_proxies [#refines_proxies+1] = {
-          proxy = current_p,
-          real  = current_r,
-        }
-        local key = keys [#current_p.__keys]
+      while current do
+        refines_proxies [#refines_proxies+1] = current
+        local key = keys [#current.__keys]
         if key == Layer.key.checks or key == Layer.key.labels then
           refines_proxies [#refines_proxies] = nil
         elseif key == Layer.key.refines or key == Layer.key.messages then
           refines_proxies = {}
           break
         end
-        current_p, current_r = current_p.__parent, current_r.__parent
+        current = current.__parent
       end
     end
     for k = #refines_proxies, 1, -1 do
       local current = refines_proxies [k]
       if current then
-        local refines = Proxy.refines (current.proxy)
+        local refines = Proxy.refines (current)
         for i = #refines-1, 1, -1 do
           local refined = refines [i]
           if not noback [refines [i]] then
             noback [refines [i]] = true
-            local current_p, current_r = current.proxy, current.real
-            for j = #current_p.__keys+1, #keys do
+            for j = #current.__keys+1, #keys do
               local key = keys [j]
               refined = j == #keys
                     and Proxy.sub (refined, key)
                      or refined [key]
-              current_r = Proxy.sub (current_r, key)
               if getmetatable (refined) ~= Proxy then
                 refined = nil
                 break
               end
             end
             if refined then
-              local p, r, c = perform (refined, current_r)
+              local p, r, c = perform (refined, real)
               if p and not coroutine then
                 if cache then
                   cache [real] [proxy] = {
@@ -745,15 +739,10 @@ function Proxy.apply (t)
     -- Search in default:
     local default_proxies = {}
     do
-      local current_p, current_r = proxy, real
-      assert (#current_p.__keys <= #current_r.__keys)
-      current_p, current_r = current_p.__parent, current_r.__parent
-      while current_p do
-        default_proxies [#default_proxies+1] = {
-          proxy = current_p,
-          real  = current_r,
-        }
-        local key = keys [#current_p.__keys+1]
+      local current = proxy.__parent
+      while current do
+        default_proxies [#default_proxies+1] = current
+        local key = keys [#current.__keys+1]
         if key == Layer.key.checks
         or key == Layer.key.default
         or key == Layer.key.labels
@@ -765,21 +754,19 @@ function Proxy.apply (t)
           default_proxies = {}
           break
         end
-        current_p, current_r = current_p.__parent, current_r.__parent
+        current = current.__parent
       end
     end
     for k = #default_proxies-1, 1, -1 do
       local current = default_proxies [k]
       if current then
-        local current_p, current_r = current.proxy, current.real
-        local default = current_p [Layer.key.default]
+        local default = current [Layer.key.default]
         if default then
-          for j = #current_p.__keys+2, #keys do
+          for j = #current.__keys+2, #keys do
             local key = keys [j]
             default = j == #keys
                   and Proxy.sub (default, key)
                    or default [key]
-            current_r = Proxy.sub (current_r, key)
             if getmetatable (default) ~= Proxy then
               default = nil
               break
@@ -787,7 +774,7 @@ function Proxy.apply (t)
           end
         end
         if default then
-          local p, r, c = perform (default, current_r)
+          local p, r, c = perform (default, real)
           if p and not coroutine then
             if cache then
               cache [real] [proxy] = {
