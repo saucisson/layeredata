@@ -1017,6 +1017,7 @@ end
 
 Layer.Proxy     = Proxy
 Layer.Reference = Reference
+Layer.Key       = Key
 Layer.reference = Reference.new
 
 -- Lua 5.1 compatibility:
