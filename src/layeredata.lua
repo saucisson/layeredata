@@ -844,14 +844,16 @@ function Proxy.__pairs (proxy)
     for p, t in Proxy.apply { proxy = proxy, resolve = true, iterate = true, } do
       if getmetatable (t) == Proxy then
         for k in Proxy.__pairs (t) do
-          if cached [k] == nil and t [k] ~= nil then
+          if  cached [k] == nil and t [k] ~= nil
+          and getmetatable (k) ~= Layer.Key then
             cached [k] = t [k]
             coroutine.yield (k, t [k])
           end
         end
       elseif type (t) == "table" then
         for k in pairs (t) do
-          if cached [k] == nil and p [k] ~= nil then
+          if  cached [k] == nil and p [k] ~= nil
+          and getmetatable (k) ~= Layer.Key then
             cached [k] = p [k]
             coroutine.yield (k, cached [k])
           end
@@ -1017,6 +1019,7 @@ end
 
 Layer.Proxy     = Proxy
 Layer.Reference = Reference
+Layer.Key       = Key
 Layer.reference = Reference.new
 
 -- Lua 5.1 compatibility:
