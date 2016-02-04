@@ -52,8 +52,11 @@ Layer.tag = setmetatable ({
 
 Layer.coroutine = coromake ()
 
+Layer.loaded = setmetatable ({}, { __mode = "v" })
+
 function Layer.new (t, options)
   assert (type (t) == "table")
+  assert (type (t.name) == "string")
   assert (options == nil or type (options) == "table")
   local layer = setmetatable ({
     __name      = t.name,
@@ -65,7 +68,16 @@ function Layer.new (t, options)
   }, Layer)
   local proxy = Proxy.__new (layer)
   layer.__root = proxy
+  Layer.loaded [t.name] = proxy
   return proxy
+end
+
+function Layer.require (name)
+  if Layer.loaded [name] then
+    return Layer.loaded [name]
+  else
+    return require (name) (Layer)
+  end
 end
 
 local Observer = {}
@@ -219,7 +231,7 @@ function Layer.encode (proxy)
       return result
     elseif getmetatable (x) == Proxy then
       assert (not is_key)
-      local result = "Layers [" .. string.format ("%q", x.__layer.__name) .. "]"
+      local result = "Layer.require " .. string.format ("%q", x.__layer.__name)
       for _, y in ipairs (x.__keys) do
         result = result .. " [" .. convert (y) .. "]"
       end
@@ -271,7 +283,7 @@ function Layer.encode (proxy)
     end
   end
   local result = [[
-return function (Layer, Layers)
+return function (Layer)
 {{{LOCALS}}}
   return Layer.new {
     name = {{{NAME}}},
