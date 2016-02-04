@@ -677,7 +677,7 @@ function Proxy.apply (t)
     if use_refines then
       local refines_proxies = {}
       do
-        local current = real
+        local current = proxy
         if not coroutine then
           current = current.__parent
         end
@@ -726,6 +726,7 @@ function Proxy.apply (t)
     end
     -- Search in default:
     if use_default then
+      keys = real.__keys
       local default_proxies = {}
       do
         local current = real.__parent
@@ -864,30 +865,12 @@ function Proxy.__pairs (proxy)
   end)
 end
 
-function Layer.contents (proxy)
-  assert (getmetatable (proxy) == Proxy)
-  local coroutine = coromake ()
-  return coroutine.wrap (function ()
-    for key, value in Proxy.__pairs (proxy) do
-      if  key ~= Layer.key.checks
-      and key ~= Layer.key.default
-      and key ~= Layer.key.labels
-      and key ~= Layer.key.messages
-      and key ~= Layer.key.meta
-      and key ~= Layer.key.refines
-      then
-        coroutine.yield (key, value)
-      end
-    end
-  end)
-end
-
 function Layer.flatten (proxy, options)
   assert (getmetatable (proxy) == Proxy)
   if type (options) ~= "table" then
     options = {}
   end
-  local iterate     = options.compact and Proxy.contents or Proxy.__pairs
+  local iterate     = Proxy.__pairs
   local references  = options.references
   local equivalents = {}
   local function f (p)
