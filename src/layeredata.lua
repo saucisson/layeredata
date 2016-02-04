@@ -293,15 +293,18 @@ end
   ]]
   local locals    = {}
   local localsize = 0
-  for k in pairs (Layer.key) do
-    localsize = math.max (localsize, #k)
+  local keys      = {}
+  for key in pairs (Layer.key) do
+    localsize = math.max (localsize, #key)
+    keys [#keys+1] = key
   end
-  for k in pairs (Layer.key) do
+  table.sort (keys)
+  for _, key in ipairs (keys) do
     local pad = ""
-    for _ = #k+1, localsize do
+    for _ = #key+1, localsize do
       pad = pad .. " "
     end
-    locals [#locals+1] = "  local " .. k .. pad .. " = Layer.key." .. k
+    locals [#locals+1] = "  local " .. key .. pad .. " = Layer.key." .. key
   end
   result = result:gsub ("{{{NAME}}}"  , string.format ("%q", proxy.__layer.__name))
   result = result:gsub ("{{{LOCALS}}}", table.concat (locals, "\n"))
