@@ -437,7 +437,7 @@ describe ("issue #20", function ()
       [default] = { v = 0 },
     }
     local res = {}
-    for k, v in Layer.contents (layer.a) do
+    for k, v in Layer.pairs (layer.a) do
       res [k] = v
     end
     assert.are.equal (res.x, 1)
