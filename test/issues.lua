@@ -350,7 +350,7 @@ describe ("issue #18", function ()
   it ("is fixed", function ()
     local Layer  = require "layeredata"
     local labels = Layer.key.labels
-    local layer  = Layer.new { layer = "layer" }
+    local layer  = Layer.new { name = "layer" }
     layer.a = {
       [labels] = { a = true },
       x = { value = 1 },
@@ -453,7 +453,7 @@ describe ("issue #22", function ()
     local Layer   = require "layeredata"
     local meta    = Layer.key.meta
     local default = Layer.key.default
-    local layer   = Layer.new { layer = "layer" }
+    local layer   = Layer.new { name = "layer" }
     layer.a = {
       x = 1,
       y = 2,
