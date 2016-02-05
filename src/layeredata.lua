@@ -308,7 +308,8 @@ end
   end
   result = result:gsub ("{{{NAME}}}"  , string.format ("%q", proxy.__layer.__name))
   result = result:gsub ("{{{LOCALS}}}", table.concat (locals, "\n"))
-  result = result:gsub ("{{{BODY}}}"  , convert (Proxy.export (proxy), false, "    "):gsub ("%%", "%%%%"))
+  local body = convert (Proxy.export (proxy), false, "    "):gsub ("%%", "%%%%")
+  result = result:gsub ("{{{BODY}}}"  , body)
   return result
 end
 
