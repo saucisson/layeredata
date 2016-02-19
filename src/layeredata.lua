@@ -595,24 +595,33 @@ Proxy.refines = c3.new {
   superclass = function (proxy)
     assert (getmetatable (proxy) == Proxy)
     local result   = {}
+    local seen     = {}
     local refines  = proxy [Layer.key.refines]
     local defaults = proxy.__parent
                  and proxy.__parent [Layer.key.defaults]
                   or nil
     if refines then
       for i = 1, Proxy.__len (refines or {}) do
-        if getmetatable (refines [i]) == Proxy then
-          result [#result+1] = refines [i]
-        elseif refines [i] then
+        local current = refines [i]
+        if getmetatable (current) == Proxy then
+          if not seen [current] then
+            result [#result+1] = current
+            seen   [current  ] = true
+          end
+        elseif current then
           assert (false)
         end
       end
     end
     if defaults then
       for i = 1, Proxy.__len (defaults) do
-        if getmetatable (defaults [i]) == Proxy then
-          result [#result+1] = defaults [i]
-        elseif defaults [i] then
+        local current = defaults [i]
+        if getmetatable (current) == Proxy then
+          if not seen [current] then
+            result [#result+1] = current
+            seen   [current  ] = true
+          end
+        elseif current then
           assert (false)
         end
       end
