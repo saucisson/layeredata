@@ -82,17 +82,14 @@ end)
 
 describe ("issue #6", function ()
   it ("is fixed", function ()
-    local Layer   = require "layeredata"
-    local default = Layer.key.default
-    local refines = Layer.key.refines
-    local layer   = Layer.new { name = "layer" }
+    local Layer    = require "layeredata"
+    local defaults = Layer.key.defaults
+    local layer    = Layer.new { name = "layer" }
     layer.a = {
       z = 1,
     }
     layer.x = {
-      [default] = {
-        [refines] = { layer.a },
-      },
+      [defaults] = { layer.a },
       b = {}
     }
     assert.are.equal (layer.x.b.z, layer.a.z)
@@ -258,20 +255,15 @@ end)
 
 describe ("issue #13", function ()
   it ("is fixed", function ()
-    local Layer   = require "layeredata"
-    local labels  = Layer.key.labels
-    local default = Layer.key.default
-    local refines = Layer.key.refines
-    local layer = Layer.new { name = "layer" }
+    local Layer    = require "layeredata"
+    local labels   = Layer.key.labels
+    local defaults = Layer.key.defaults
+    local layer    = Layer.new { name = "layer" }
     layer.a = {
       [labels] = { a = true },
       x = { value = 1 },
       collection = {
-        [default] = {
-          [refines] = {
-            Layer.reference "a".x,
-          }
-        },
+        [defaults] = { Layer.reference "a".x },
         e = {},
       }
     }
@@ -426,15 +418,21 @@ end)
 
 describe ("issue #20", function ()
   it ("is fixed", function ()
-    local Layer   = require "layeredata"
-    local meta    = Layer.key.meta
-    local default = Layer.key.default
-    local layer   = Layer.new { name = "layer" }
+    local Layer    = require "layeredata"
+    local meta     = Layer.key.meta
+    local defaults = Layer.key.defaults
+    local labels   = Layer.key.labels
+    local layer    = Layer.new { name = "layer" }
+    local _        = Layer.reference "layer"
+    layer [labels] = { layer = true }
+    layer.d = {
+      v = 0,
+    }
     layer.a = {
       x = 1,
       y = 2,
-      [meta]    = { z = 3 },
-      [default] = { v = 0 },
+      [meta]     = { z = 3 },
+      [defaults] = { _.d },
     }
     local res = {}
     for k, v in Layer.pairs (layer.a) do
@@ -450,15 +448,21 @@ end)
 
 describe ("issue #22", function ()
   it ("is fixed", function ()
-    local Layer   = require "layeredata"
-    local meta    = Layer.key.meta
-    local default = Layer.key.default
-    local layer   = Layer.new { name = "layer" }
+    local Layer    = require "layeredata"
+    local meta     = Layer.key.meta
+    local defaults = Layer.key.defaults
+    local labels   = Layer.key.labels
+    local layer    = Layer.new { name = "layer" }
+    local _        = Layer.reference "layer"
+    layer [labels] = { layer = true }
+    layer.d = {
+      v = 0,
+    }
     layer.a = {
       x = 1,
       y = 2,
-      [meta]    = { z = 3 },
-      [default] = { v = 0 },
+      [meta]     = { z = 3 },
+      [defaults] = { _.d },
     }
     local flattened = Layer.flatten (layer)
     assert.are.equal (flattened.a [meta].z, 3)
@@ -469,8 +473,7 @@ describe ("issue #23", function ()
   it ("is fixed", function ()
     local Layer    = require "layeredata"
     local checks   = Layer.key.checks
-    local default  = Layer.key.default
-    local refines  = Layer.key.refines
+    local defaults = Layer.key.defaults
     local messages = Layer.key.messages
     local record   = Layer.new { name = "record" }
     record [checks] = {
@@ -480,11 +483,7 @@ describe ("issue #23", function ()
     }
     local model = Layer.new { name = "instance" }
     model.a = {
-     [default] = {
-       [refines] = {
-         record,
-       },
-     },
+     [defaults] = { record },
      b = {},
     }
     local _ = model.a.b

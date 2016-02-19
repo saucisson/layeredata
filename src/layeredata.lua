@@ -38,7 +38,7 @@ Reference.memo = setmetatable ({}, IgnoreValues)
 
 Layer.key = setmetatable ({
   checks   = setmetatable ({ name = "checks"   }, Key),
-  default  = setmetatable ({ name = "default"  }, Key),
+  defaults = setmetatable ({ name = "defaults" }, Key),
   labels   = setmetatable ({ name = "labels"   }, Key),
   messages = setmetatable ({ name = "messages" }, Key),
   meta     = setmetatable ({ name = "meta"     }, Key),
@@ -594,16 +594,27 @@ end
 Proxy.refines = c3.new {
   superclass = function (proxy)
     assert (getmetatable (proxy) == Proxy)
-    local result  = {}
-    local refines = proxy [Layer.key.refines]
-    if not refines then
-      return result
+    local result   = {}
+    local refines  = proxy [Layer.key.refines]
+    local defaults = proxy.__parent
+                 and proxy.__parent [Layer.key.defaults]
+                  or nil
+    if refines then
+      for i = 1, Proxy.__len (refines or {}) do
+        if getmetatable (refines [i]) == Proxy then
+          result [#result+1] = refines [i]
+        elseif refines [i] then
+          assert (false)
+        end
+      end
     end
-    for i = 1, Proxy.__len (refines) do
-      if getmetatable (refines [i]) == Proxy then
-        result [i] = refines [i]
-      elseif refines [i] then
-        assert (false)
+    if defaults then
+      for i = 1, Proxy.__len (defaults) do
+        if getmetatable (defaults [i]) == Proxy then
+          result [#result+1] = defaults [i]
+        elseif defaults [i] then
+          assert (false)
+        end
       end
     end
     return result
@@ -615,7 +626,6 @@ function Proxy.apply (t)
   local coroutine   = t.iterate and coromake () or nil
   local use_resolve = t.resolve
   local use_refines = t.use_refines or true
-  local use_default = t.use_default or true
   local seen        = setmetatable ({}, Cache)
   local noback      = {}
   local cache
@@ -628,7 +638,6 @@ function Proxy.apply (t)
     if t.proxy.__keys [i] == Layer.key.messages then
       cache       = nil
       use_refines = false
-      use_default = false
     end
   end
   local function perform (proxy, real)
@@ -721,56 +730,6 @@ function Proxy.apply (t)
               end
             end
             noback [refines [i]] = nil
-          end
-        end
-      end
-    end
-    -- Search in default:
-    if use_default then
-      keys = real.__keys
-      local default_proxies = {}
-      do
-        local current = real.__parent
-        if current then
-          current = current.__parent
-        end
-        while current do
-          default_proxies [#default_proxies+1] = current
-          local key = keys [#current.__keys+1]
-          if getmetatable (key) == Key then
-            default_proxies = {}
-          end
-          if key == Layer.key.default then
-            break
-          end
-          current = current.__parent
-        end
-      end
-      for _, current in ipairs (default_proxies) do
-        local default = current [Layer.key.default]
-        if default then
-          for j = #current.__keys+2, #keys do
-            local key = keys [j]
-            default = j == #keys
-                  and Proxy.sub (default, key)
-                   or default [key]
-            if getmetatable (default) ~= Proxy then
-              default = nil
-              break
-            end
-          end
-        end
-        if default then
-          local p, r, c = perform (default, default)
-          if p and not coroutine then
-            if cache then
-              cache [real] [proxy] = {
-                proxy   = p,
-                real    = r,
-                current = c,
-              }
-            end
-            return p, r, c
           end
         end
       end
