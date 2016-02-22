@@ -57,13 +57,14 @@ Layer.coroutine = coromake ()
 
 Layer.loaded = setmetatable ({}, { __mode = "v" })
 
-function Layer.new (t, options)
-  assert (type (t) == "table")
-  assert (type (t.name) == "string")
-  assert (options == nil or type (options) == "table")
+function Layer.new (t)
+  assert (t == nil or type (t) == "table")
+  t      = t or {}
+  t.name = t.name or uuid ()
+  t.data = t.data or {}
   local layer = setmetatable ({
     __name      = t.name,
-    __data      = Layer.import (t.data or {}),
+    __data      = Layer.import (t.data),
     __root      = false,
     __proxies   = setmetatable ({}, IgnoreValues),
     __indent    = {},
