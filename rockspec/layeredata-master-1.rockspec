@@ -17,8 +17,9 @@ observed through several layers.
 }
 
 dependencies = {
-  "c3       >= 1",
-  "coronest >= 1",
+  "c3",
+  "coronest",
+  "uuid",
 }
 
 build = {
