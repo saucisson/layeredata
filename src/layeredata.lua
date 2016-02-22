@@ -1,5 +1,8 @@
 local coromake = require "coroutine.make"
 local c3       = require "c3"
+local uuid     = require "uuid"
+
+uuid.seed ()
 
 local Layer = setmetatable ({}, {
   __tostring = function () return "Layer" end
@@ -119,10 +122,7 @@ function Layer.clear_caches (proxy)
   }
 end
 
-function Layer.import (data, ref, seen)
-  if not ref then
-    ref = Reference.new (false)
-  end
+function Layer.import (data, within, seen, in_key)
   if not seen then
     seen = {}
   end
@@ -136,7 +136,18 @@ function Layer.import (data, ref, seen)
   if type (data) ~= "table" then
     return data
   elseif getmetatable (data) == Proxy then
-    return data
+    if within and not in_key and data.__layer == within.__layer then
+      local root = within
+      while root.__parent do
+        root = root.__parent
+      end
+      result = Reference.new (root)
+      for _, key in ipairs (data.__keys) do
+        result = result [key]
+      end
+    else
+      result = data
+    end
   elseif getmetatable (data) == Reference then
     result = data
   elseif data.__proxy then
@@ -149,22 +160,25 @@ function Layer.import (data, ref, seen)
     end
     result = reference
   else
-    seen [data] = ref
+    result = {}
+    seen [data] = result
     local updates = {}
     for key, value in pairs (data) do
       if type (key  ) == "table" then
-        updates [key] = Layer.import (key, ref, seen)
+        updates [key] = Layer.import (key, within, seen, true)
       end
       if type (value) == "table" then
-        data    [key] = Layer.import (value, ref [key], seen)
+        result  [key] = Layer.import (value, within, seen)
+      else
+        result [key] = value
       end
     end
     for old_key, new_key in pairs (updates) do
-      local value = data [old_key]
-      data [old_key] = nil
-      data [new_key] = value
+      if old_key ~= new_key then
+        result [new_key] = result [old_key]
+        result [old_key] = nil
+      end
     end
-    result = data
   end
   if not seen [data] then
     seen [data] = result
@@ -464,8 +478,8 @@ function Proxy.__newindex (proxy, key, value)
         or getmetatable (key) == Proxy
         or getmetatable (key) == Reference
         or getmetatable (key) == Key)
-  key   = Layer.import (key  )
-  value = Layer.import (value)
+  key   = Layer.import (key  , proxy)
+  value = Layer.import (value, proxy)
   proxy = Proxy.sub (proxy, key)
   local p, r = Proxy.apply { proxy = proxy, resolve = false, iterate = false, }
   if r == nil then
@@ -491,22 +505,34 @@ function Proxy.__newindex (proxy, key, value)
   end
 end
 
+local function merge (t, with)
+  for k, v in pairs (with) do
+    if t [k] and type (v) == "table" then
+      merge (t [k], v)
+    else
+      t [k] = v
+    end
+  end
+  return t
+end
+
 function Proxy.replacewith (proxy, value)
   assert (getmetatable (proxy) == Proxy)
   Layer.clear_caches (proxy)
-  value = Layer.import (value)
   local layer = proxy.__layer
   local keys  = proxy.__keys
   if #keys == 0 then
     assert (type (value) == "table")
-    layer.__data = value
+    layer.__data = {}
+    merge (layer.__data, Layer.import (value, proxy))
   else
     local current = layer.__data
     for i = 1, #keys-1 do
       current = current [keys [i]]
       assert (type (current) == "table" and getmetatable (current) ~= Reference)
     end
-    current [keys [#keys]] = value
+    current [keys [#keys]] = {}
+    merge (current [keys [#keys]], Layer.import (value, proxy))
   end
 end
 
@@ -878,19 +904,24 @@ function Layer.flatten (proxy, options)
   }
 end
 
-function Reference.new (from)
-  from = from or false
-  local found = Reference.memo [from]
-  if found then
-    return found
+function Reference.new (target)
+  assert (getmetatable (target) == Proxy)
+  local memo = Reference.memo [target]
+  if memo then
+    return memo
   end
+  local label = uuid ()
+  if not target [Layer.key.labels] then
+    target [Layer.key.labels] = {}
+  end
+  target [Layer.key.labels] [label] = true
   local result = setmetatable ({
-    __from   = from,
+    __from   = label,
     __keys   = {},
     __memo   = setmetatable ({}, IgnoreValues),
     __parent = false,
   }, Reference)
-  Reference.memo [from] = result
+  Reference.memo [target] = result
   return result
 end
 
@@ -915,7 +946,6 @@ function Reference.__index (reference, key)
   return found
 end
 
-
 function Reference.resolve (reference, proxy)
   assert (getmetatable (reference) == Reference)
   assert (getmetatable (proxy    ) == Proxy    )
@@ -932,20 +962,15 @@ function Reference.resolve (reference, proxy)
       break
     end
   end
-  local current
-  if not reference.__from then -- absolute
-    current = proxy.__layer.__root
-  else -- relative
-    current = proxy
-    while current do
-      if not Proxy.is_reference (current) then
-        local labels = current [Layer.key.labels]
-        if labels and labels [reference.__from] then
-          break
-        end
+  local current = proxy
+  while current do
+    if not Proxy.is_reference (current) then
+      local labels = current [Layer.key.labels]
+      if labels and labels [reference.__from] then
+        break
       end
-      current = current.__parent
     end
+    current = current.__parent
   end
   local rkeys = reference.__keys
   for i = 1, #rkeys do
