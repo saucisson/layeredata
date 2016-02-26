@@ -274,6 +274,12 @@ function Layer.encode (proxy)
           end
         end
       end
+      for k, v in pairs (x) do
+        if getmetatable (k) == Proxy then
+          subresults [#subresults+1] = nindent .. "[" .. convert (k, false, nindent) .. "] = " .. convert (v, false, nindent)
+          seen [k] = true
+        end
+      end
       for k in pairs (x) do
         assert (seen [k])
       end
