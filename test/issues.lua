@@ -474,4 +474,20 @@ describe ("issue #38", function ()
       assert.are.equal (l2 [Layer.key.meta].ref, l2.t)
     end)
   end)
+
+  describe ("issue #46", function ()
+    it ("is fixed", function ()
+      local Layer = require "layeredata"
+      local l1    = Layer.new { name = "l1" }
+      l1 [Layer.key.meta] = {
+        a = 1,
+      }
+      local l2 = Layer.new { name = "l2" }
+      l2 [Layer.key.refines] = { l1 }
+      local l3 = Layer.new { name = "l3" }
+      l3.m = {}
+      Layer.Proxy.replacewith (l3.m, l1)
+      assert.is_not_nil (l3.m [Layer.key.meta])
+    end)
+  end)
 end)

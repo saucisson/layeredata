@@ -512,17 +512,6 @@ function Proxy.__newindex (proxy, key, value)
   end
 end
 
-local function merge (t, with)
-  for k, v in pairs (with) do
-    if t [k] and type (v) == "table" then
-      merge (t [k], v)
-    else
-      t [k] = v
-    end
-  end
-  return t
-end
-
 function Proxy.replacewith (proxy, value)
   assert (getmetatable (proxy) == Proxy)
   Layer.clear_caches (proxy)
@@ -530,8 +519,7 @@ function Proxy.replacewith (proxy, value)
   local keys  = proxy.__keys
   if #keys == 0 then
     assert (type (value) == "table")
-    layer.__data = {}
-    merge (layer.__data, Layer.import (value, proxy))
+    layer.__data = Layer.import (value, proxy)
   else
     local current = layer.__data
     for i = 1, #keys-1 do
@@ -539,7 +527,7 @@ function Proxy.replacewith (proxy, value)
       assert (type (current) == "table" and getmetatable (current) ~= Reference)
     end
     current [keys [#keys]] = {}
-    merge (current [keys [#keys]], Layer.import (value, proxy))
+    current [keys [#keys]] = Layer.import (value, proxy)
   end
 end
 
@@ -630,7 +618,8 @@ Proxy.refines = c3.new {
     local result   = {}
     local seen     = {}
     local refines  = proxy [Layer.key.refines]
-    local defaults = proxy.__parent
+    local defaults = proxy.__keys [#proxy.__keys] ~= Layer.key.meta
+                 and proxy.__parent
                  and proxy.__parent [Layer.key.defaults]
                   or nil
     if refines then
@@ -736,7 +725,11 @@ function Proxy.apply (t)
         while current do
           refines_proxies [#refines_proxies+1] = current
           local key = keys [#current.__keys]
-          if getmetatable (key) == Key and key ~= Layer.key.default then
+          if key == Layer.key.refines
+          or key == Layer.key.checks
+          or key == Layer.key.messages
+          or key == Layer.key.labels
+          then
             refines_proxies [#refines_proxies] = nil
           end
           current = current.__parent
@@ -958,7 +951,7 @@ function Reference.resolve (reference, proxy)
   assert (getmetatable (proxy    ) == Proxy    )
   for i = 1, #proxy.__keys do
     local key = proxy.__keys [i]
-    if key == Layer.key.default
+    if key == Layer.key.defaults
     or key == Layer.key.labels
     or key == Layer.key.messages
     or key == Layer.key.refines
