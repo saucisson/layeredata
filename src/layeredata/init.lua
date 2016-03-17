@@ -1,8 +1,7 @@
-local coromake = require "coroutine.make"
-local c3       = require "c3"
-local uuid     = require "uuid"
+local Coromake = require "coroutine.make"
+local Uuid     = require "uuid"
 
-uuid.seed ()
+Uuid.seed ()
 
 local Layer = setmetatable ({}, {
   __tostring = function () return "Layer" end
@@ -53,14 +52,14 @@ Layer.tag = setmetatable ({
   computing = {},
 }, Read_Only)
 
-Layer.coroutine = coromake ()
+Layer.coroutine = Coromake ()
 
 Layer.loaded = setmetatable ({}, { __mode = "v" })
 
 function Layer.new (t)
   assert (t == nil or type (t) == "table")
   t      = t or {}
-  t.name = t.name or uuid ()
+  t.name = t.name or Uuid ()
   t.data = t.data or {}
   local layer = setmetatable ({
     __name      = t.name,
@@ -109,7 +108,6 @@ end
 
 function Layer.clear_caches (proxy)
   assert (proxy == nil or getmetatable (proxy) == Proxy)
-  Proxy.refines:clear ()
   Layer.caches = {
     index   = setmetatable ({}, IgnoreKeys),
     pairs   = setmetatable ({}, IgnoreKeys),
@@ -329,7 +327,7 @@ end
   end
   result = result:gsub ("{{{NAME}}}"  , string.format ("%q", proxy.__layer.__name))
   result = result:gsub ("{{{LOCALS}}}", table.concat (locals, "\n"))
-  local body = convert (Proxy.export (proxy), false, "    "):gsub ("%%", "%%%%")
+  local body = convert (Proxy.rawget (proxy), false, "    "):gsub ("%%", "%%%%")
   result = result:gsub ("{{{BODY}}}"  , body)
   return result
 end
@@ -373,11 +371,12 @@ function Layer.dump (proxy)
       assert (false)
     end
   end
-  return convert (Proxy.export (proxy))
+  return convert (Proxy.rawget (proxy))
 end
 
 function Proxy.sub (proxy, key)
   assert (getmetatable (proxy) == Proxy)
+  assert (key ~= nil)
   local proxies = proxy.__memo
   local found   = proxies [key]
   if not found then
@@ -453,17 +452,15 @@ function Proxy.__index (proxy, key)
     cache [proxy] = Layer.tag.computing
   end
   local result
-  while true do
-    local _, c = Proxy.apply { proxy = proxy, resolve = true, iterate = false, }
-    if getmetatable (c) == Proxy then
-      proxy = c
-    elseif type (c) ~= "table" then
-      result = c
-      break
-    else
-      result = proxy
-      break
-    end
+  local _, value = Proxy.equivalents (proxy) ()
+  if getmetatable (value) == Reference then
+    result = Reference.resolve (value, proxy)
+  elseif getmetatable (value) == Proxy then
+    result = value
+  elseif type (value) == "table" then
+    result = proxy
+  else
+    result = value
   end
   if proxy.__cache then
     local cache = Layer.caches.index
@@ -474,9 +471,19 @@ function Proxy.__index (proxy, key)
     end
   end
   if getmetatable (result) == Proxy then
-    Proxy.check (result)
+    -- Proxy.check (result)
   end
   return result
+end
+
+function Proxy.rawget (proxy)
+  assert (getmetatable (proxy) == Proxy)
+  local current = proxy.__layer.__data
+  local keys    = proxy.__keys
+  for _, key in ipairs (keys) do
+    current = type (current) == "table" and current [key] or nil
+  end
+  return current
 end
 
 function Proxy.__newindex (proxy, key, value)
@@ -487,16 +494,9 @@ function Proxy.__newindex (proxy, key, value)
         or getmetatable (key) == Key)
   key   = Layer.import (key  , proxy)
   value = Layer.import (value, proxy)
-  proxy = Proxy.sub (proxy, key)
-  local p, r = Proxy.apply { proxy = proxy, resolve = false, iterate = false, }
-  if r == nil then
-    p = proxy
-  elseif getmetatable (r) == Reference and getmetatable (value) ~= Reference then
-    p = Reference.resolve (r, proxy)
-  end
   local current = proxy.__layer.__data
-  local keys    = p.__keys
-  for i = 1, #keys-1 do
+  local keys    = proxy.__keys
+  for i = 1, #keys do
     local k = keys [i]
     if current [k] == nil then
       current [k] = {}
@@ -531,17 +531,6 @@ function Proxy.replacewith (proxy, value)
   end
 end
 
-function Proxy.export (proxy)
-  assert (getmetatable (proxy) == Proxy)
-  local keys     = proxy.__keys
-  local current  = proxy.__layer.__data
-  for i = 1, #keys do
-    current = current [keys [i]]
-    assert (type (current) == "table" and getmetatable (current) ~= Reference)
-  end
-  return current
-end
-
 function Proxy.is_prefix (lhs, rhs)
   assert (getmetatable (lhs) == Proxy)
   assert (getmetatable (rhs) == Proxy)
@@ -568,16 +557,87 @@ end
 
 function Proxy.is_reference (proxy)
   assert (getmetatable (proxy) == Proxy)
-  local _, r = Proxy.apply { proxy = proxy, resolve = false, iterate = false, }
-  return getmetatable (r) == Reference
+  local _, value = Proxy.equivalents (proxy) ()
+  return getmetatable (value) == Reference
+end
+
+local Seen = {}
+
+function Seen.new ()
+  return setmetatable ({}, Seen)
+end
+
+function Seen.__index (seen, key)
+  seen [key] = setmetatable ({}, Seen)
+  return seen [key]
+end
+
+function Proxy.equivalents (proxy, seen, options)
+  assert (getmetatable (proxy) == Proxy)
+  assert (seen == nil or getmetatable (seen) == Seen)
+  assert (options == nil or type (options) == "table")
+  seen    = seen    or Seen.new ()
+  options = options or {}
+  local coroutine = Coromake ()
+  local keys      = proxy.__keys
+  local function iterate (current, nkeys)
+    if seen [proxy] [current] [nkeys] == true then
+      return
+    end
+    seen [proxy] [current] [nkeys] = true
+    local raw = Proxy.rawget (current)
+    if (options.all or raw ~= nil) and nkeys == 0 then
+      coroutine.yield (current, raw)
+    end
+    local refines = raw and raw [Layer.key.refines]
+    for _, x in ipairs (refines or {}) do
+      while getmetatable (x) == Reference do
+        x = Reference.resolve (x, proxy, seen)
+      end
+      assert (getmetatable (x) == Proxy)
+      if #keys >= nkeys then
+        for i = #keys-nkeys+1, #keys do
+          x = Proxy.sub (x, keys [i])
+        end
+      end
+      iterate (x, 0)
+    end
+    local parent   = current.__parent
+    local rawp     = parent and Proxy.rawget (parent)
+    local defaults = rawp   and rawp [Layer.key.defaults]
+    for i = #keys-nkeys+1, #keys do
+      if getmetatable (keys [i]) == Key then
+        defaults = nil
+      end
+    end
+    for _, x in ipairs (defaults or {}) do
+      while getmetatable (x) == Reference do
+        x = Reference.resolve (x, proxy, seen)
+      end
+      if getmetatable (x) == Proxy then
+        -- for i = #keys-nkeys+1, #keys do
+        --   x = Proxy.sub (x, keys [i])
+        -- end
+        -- for r1, r2 in Proxy.equivalents (x) do
+        --   coroutine.yield (r1, r2)
+        -- end
+        iterate (x, nkeys)
+      end
+    end
+    if parent then
+      iterate (parent, nkeys+1)
+    end
+  end
+  return coroutine.wrap (function ()
+    iterate (proxy, 0)
+  end)
 end
 
 function Proxy.__lt (lhs, rhs)
   assert (getmetatable (lhs) == Proxy)
   assert (getmetatable (rhs) == Proxy)
-  local parents = Proxy.refines (rhs)
-  for i = 1, #parents-1 do -- last parent is self
-    if parents [i] == lhs then
+  for p in Proxy.equivalents (rhs, nil, { all = true }) do
+    if getmetatable (p) == Proxy and p == lhs then
       return true
     end
   end
@@ -612,177 +672,6 @@ function Proxy.__mod (proxy, n)
   end
 end
 
-Proxy.refines = c3.new {
-  superclass = function (proxy)
-    assert (getmetatable (proxy) == Proxy)
-    local result   = {}
-    local seen     = {}
-    local refines  = proxy [Layer.key.refines]
-    local defaults = proxy.__keys [#proxy.__keys] ~= Layer.key.meta
-                 and proxy.__parent
-                 and proxy.__parent [Layer.key.defaults]
-                  or nil
-    if refines then
-      for i = 1, Proxy.__len (refines or {}) do
-        local current = refines [i]
-        if getmetatable (current) == Proxy then
-          if not seen [current] then
-            result [#result+1] = current
-            seen   [current  ] = true
-          end
-        elseif current then
-          assert (false)
-        end
-      end
-    end
-    if defaults then
-      for i = 1, Proxy.__len (defaults) do
-        local current = defaults [i]
-        if getmetatable (current) == Proxy then
-          if not seen [current] then
-            result [#result+1] = current
-            seen   [current  ] = true
-          end
-        elseif current then
-          assert (false)
-        end
-      end
-    end
-    return result
-  end,
-}
-
-function Proxy.apply (t)
-  assert (getmetatable (t.proxy) == Proxy)
-  local coroutine   = t.iterate and coromake () or nil
-  local use_resolve = t.resolve
-  local use_refines = t.use_refines or true
-  local seen        = setmetatable ({}, Cache)
-  local noback      = {}
-  local cache
-  if not t.iterate and use_resolve then
-    cache = Layer.caches.perform.noiterate_resolve
-  elseif not t.iterate and not use_resolve then
-    cache = Layer.caches.perform.noiterate_noresolve
-  end
-  for i = 1, #t.proxy.__keys do
-    if t.proxy.__keys [i] == Layer.key.messages then
-      cache       = nil
-      use_refines = false
-    end
-  end
-  local function perform (proxy, real)
-    if cache then
-      local cached = cache [real] [proxy]
-      if cached then
-        return cached.proxy, cached.real, cached.current
-      end
-    end
-    assert (getmetatable (proxy) == Proxy)
-    assert (getmetatable (real ) == Proxy)
-    if seen [real] [proxy] then
-      return nil
-    end
-    seen [real] [proxy] = true
-    local keys = proxy.__keys
-    -- Search in current layer:
-    do
-      local current = proxy.__layer.__data
-      for i = 1, #keys do
-        current = current [keys [i]]
-        if getmetatable (current) == Reference and use_resolve then
-          assert (i == #keys)
-          current = Reference.resolve (current, real)
-          break
-        elseif i ~= #keys and type (current) ~= "table" then
-          current = nil
-          break
-        end
-      end
-      if current ~= nil then
-        if coroutine then
-          coroutine.yield (real, current)
-        else
-          if cache then
-            cache [real] [proxy] = {
-              proxy   = proxy,
-              real    = real,
-              current = current,
-            }
-          end
-          return proxy, real, current
-        end
-      end
-    end
-    -- Search in refined:
-    if use_refines then
-      local refines_proxies = {}
-      do
-        local current = proxy
-        if not coroutine then
-          current = current.__parent
-        end
-        while current do
-          refines_proxies [#refines_proxies+1] = current
-          local key = keys [#current.__keys]
-          if key == Layer.key.refines
-          or key == Layer.key.checks
-          or key == Layer.key.messages
-          or key == Layer.key.labels
-          then
-            refines_proxies [#refines_proxies] = nil
-          end
-          current = current.__parent
-        end
-      end
-      for _, current in ipairs (refines_proxies) do
-        local refines = Proxy.refines (current)
-        for i = #refines-1, 1, -1 do
-          local refined = refines [i]
-          if not noback [refines [i]] then
-            noback [refines [i]] = true
-            for j = #current.__keys+1, #keys do
-              local key = keys [j]
-              refined = j == #keys
-                    and Proxy.sub (refined, key)
-                     or refined [key]
-              if getmetatable (refined) ~= Proxy then
-                refined = nil
-                break
-              end
-            end
-            if refined then
-              local p, r, c = perform (refined, real)
-              if p and not coroutine then
-                if cache then
-                  cache [real] [proxy] = {
-                    proxy   = p,
-                    real    = r,
-                    current = c,
-                  }
-                end
-                return p, r, c
-              end
-            end
-            noback [refines [i]] = nil
-          end
-        end
-      end
-    end
-    if cache then
-      cache [real] [proxy] = {}
-    end
-  end
-  if coroutine then
-    return coroutine.wrap (function ()
-      perform (t.proxy, t.proxy)
-    end)
-  else
-    local _, r, c = perform (t.proxy, t.proxy)
-    return r, c
-  end
-end
-
 function Proxy.__len (proxy)
   assert (getmetatable (proxy) == Proxy)
   local cache = Layer.caches.len
@@ -809,7 +698,7 @@ function Proxy.__ipairs (proxy)
       end
     end)
   end
-  local coroutine = coromake ()
+  local coroutine = Coromake ()
   return coroutine.wrap (function ()
     local cached = {}
     for i = 1, math.huge do
@@ -826,7 +715,7 @@ end
 
 function Proxy.__pairs (proxy)
   assert (getmetatable (proxy) == Proxy)
-  local coroutine = coromake ()
+  local coroutine = Coromake ()
   local cache = Layer.caches.pairs
   if cache [proxy] then
     return coroutine.wrap (function ()
@@ -837,17 +726,20 @@ function Proxy.__pairs (proxy)
   end
   return coroutine.wrap (function ()
     local cached = {}
-    for p, t in Proxy.apply { proxy = proxy, resolve = true, iterate = true, } do
-      if getmetatable (t) == Proxy then
-        for k in Proxy.__pairs (t) do
-          if  cached [k] == nil and t [k] ~= nil
+    for p, current in Proxy.equivalents (proxy) do
+      if getmetatable (current) == Reference then
+        current = Reference.resolve (proxy)
+      end
+      if getmetatable (current) == Proxy then
+        for k in Proxy.__pairs (current) do
+          if  cached [k] == nil and current [k] ~= nil
           and getmetatable (k) ~= Layer.Key then
-            cached [k] = t [k]
-            coroutine.yield (k, t [k])
+            cached [k] = current [k]
+            coroutine.yield (k, current [k])
           end
         end
-      elseif type (t) == "table" then
-        for k in pairs (t) do
+      elseif type (current) == "table" then
+        for k in pairs (current) do
           if  cached [k] == nil and p [k] ~= nil
           and getmetatable (k) ~= Layer.Key then
             cached [k] = p [k]
@@ -880,8 +772,7 @@ function Layer.flatten (proxy, options)
       if options [k] ~= false then
         local v
         if references then
-          local _, r = Proxy.apply { proxy = Proxy.sub (p, k), resolve = false, iterate = false }
-          v = r
+          v = Proxy.equivalents (Proxy.sub (p, k)) ()
         else
           v = p [k]
         end
@@ -910,11 +801,8 @@ function Reference.new (target)
   if memo then
     return memo
   end
-  local label = uuid ()
-  if not target [Layer.key.labels] then
-    target [Layer.key.labels] = {}
-  end
-  target [Layer.key.labels] [label] = true
+  local label  = Uuid ()
+  Proxy.sub (target, Layer.key.labels) [label] = true
   local result = setmetatable ({
     __from   = label,
     __keys   = {},
@@ -946,16 +834,12 @@ function Reference.__index (reference, key)
   return found
 end
 
-function Reference.resolve (reference, proxy)
+function Reference.resolve (reference, proxy, seen)
   assert (getmetatable (reference) == Reference)
   assert (getmetatable (proxy    ) == Proxy    )
   for i = 1, #proxy.__keys do
     local key = proxy.__keys [i]
-    if key == Layer.key.defaults
-    or key == Layer.key.labels
-    or key == Layer.key.messages
-    or key == Layer.key.refines
-    then
+    if getmetatable (key) == Key then
       for _ = #proxy.__keys, i, -1 do
         proxy = proxy.__parent
       end
@@ -964,17 +848,23 @@ function Reference.resolve (reference, proxy)
   end
   local current = proxy
   while current do
-    if not Proxy.is_reference (current) then
-      local labels = current [Layer.key.labels]
-      if labels and labels [reference.__from] then
-        break
-      end
+    local labels = current
+    labels = Proxy.sub (labels, Layer.key.labels)
+    labels = Proxy.sub (labels, reference.__from)
+    if Proxy.equivalents (labels, seen) () then
+      break
     end
     current = current.__parent
   end
+  if not current then
+    return  nil
+  end
   local rkeys = reference.__keys
   for i = 1, #rkeys do
-    if type (current) ~= "table" then
+    while getmetatable (current) == Reference do
+      current = Reference.resolve (current, proxy, seen)
+    end
+    if getmetatable (current) ~= Proxy then
       return nil
     end
     current = current [rkeys [i]]
