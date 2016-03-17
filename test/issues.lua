@@ -14,7 +14,10 @@ describe ("issue #1", function ()
         z = 1,
       },
     }
-    assert.are_equal (layer.x.z, 1)
+    assert.has.no.errors (function ()
+      local _ = layer.x.z
+    end)
+    assert.are.equal (layer.x.z, 1)
   end)
 end)
 

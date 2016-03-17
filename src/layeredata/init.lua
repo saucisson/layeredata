@@ -481,7 +481,11 @@ function Proxy.rawget (proxy)
   local current = proxy.__layer.__data
   local keys    = proxy.__keys
   for _, key in ipairs (keys) do
-    current = type (current) == "table" and current [key] or nil
+    current = type (current) == "table"
+          and getmetatable (current) ~= Proxy
+          and getmetatable (current) ~= Reference
+          and current [key]
+           or nil
   end
   return current
 end
@@ -581,6 +585,7 @@ function Proxy.equivalents (proxy, seen, options)
   local coroutine = Coromake ()
   local keys      = proxy.__keys
   local function iterate (current, nkeys)
+    print (proxy, current)
     if seen [proxy] [current] [nkeys] == true then
       return
     end
@@ -589,39 +594,39 @@ function Proxy.equivalents (proxy, seen, options)
     if (options.all or raw ~= nil) and nkeys == 0 then
       coroutine.yield (current, raw)
     end
-    local refines = raw and raw [Layer.key.refines]
+    local refines = type (raw) == "table" and raw [Layer.key.refines]
     for _, x in ipairs (refines or {}) do
+      local p = proxy
+      for _ = 1, nkeys+1 do
+        p = getmetatable (p) == Proxy and p.__parent
+      end
       while getmetatable (x) == Reference do
-        x = Reference.resolve (x, proxy, seen)
+        x = Reference.resolve (x, p, seen)
       end
       assert (getmetatable (x) == Proxy)
-      if #keys >= nkeys then
-        for i = #keys-nkeys+1, #keys do
-          x = Proxy.sub (x, keys [i])
-        end
+      for i = #keys-nkeys+1, #keys do
+        x = Proxy.sub (x, keys [i])
       end
       iterate (x, 0)
     end
     local parent   = current.__parent
-    local rawp     = parent and Proxy.rawget (parent)
-    local defaults = rawp   and rawp [Layer.key.defaults]
-    for i = #keys-nkeys+1, #keys do
-      if getmetatable (keys [i]) == Key then
-        defaults = nil
-      end
+    local key      = current.__keys [#current.__keys]
+    current        = getmetatable (key) ~= Key and current or nil
+    local rawp     = current and parent and Proxy.rawget (parent)
+    local defaults = type (rawp) == "table" and rawp [Layer.key.defaults]
+    local p = proxy
+    for _ = 1, nkeys+1 do
+      p = getmetatable (p) == Proxy and p.__parent
     end
     for _, x in ipairs (defaults or {}) do
       while getmetatable (x) == Reference do
-        x = Reference.resolve (x, proxy, seen)
+        x = Reference.resolve (x, p, seen)
       end
       if getmetatable (x) == Proxy then
-        -- for i = #keys-nkeys+1, #keys do
-        --   x = Proxy.sub (x, keys [i])
-        -- end
-        -- for r1, r2 in Proxy.equivalents (x) do
-        --   coroutine.yield (r1, r2)
-        -- end
-        iterate (x, nkeys)
+        for i = #keys-nkeys+1, #keys do
+          x = Proxy.sub (x, keys [i])
+        end
+        iterate (x, 0)
       end
     end
     if parent then
@@ -727,8 +732,8 @@ function Proxy.__pairs (proxy)
   return coroutine.wrap (function ()
     local cached = {}
     for p, current in Proxy.equivalents (proxy) do
-      if getmetatable (current) == Reference then
-        current = Reference.resolve (proxy)
+      while getmetatable (current) == Reference do
+        current = Reference.resolve (current, proxy)
       end
       if getmetatable (current) == Proxy then
         for k in Proxy.__pairs (current) do
@@ -857,7 +862,7 @@ function Reference.resolve (reference, proxy, seen)
     current = current.__parent
   end
   if not current then
-    return  nil
+    return nil
   end
   local rkeys = reference.__keys
   for i = 1, #rkeys do
