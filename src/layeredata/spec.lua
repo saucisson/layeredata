@@ -2,7 +2,7 @@ require "busted.runner" ()
 
 local assert = require "luassert"
 
-describe ("issue #1", function ()
+describe ("issue #1 #current", function ()
   it ("is fixed", function ()
     local Layer = require "layeredata"
     local layer = Layer.new { name = "layer" }
@@ -166,54 +166,54 @@ describe ("issue #9", function ()
   end)
 end)
 
-describe ("issue #10", function ()
-  it ("is fixed", function ()
-    local Layer   = require "layeredata"
-    local refines = Layer.key.refines
-    local a = Layer.new { name = "a" }
-    local b = Layer.new { name = "b" }
-    local c = Layer.new { name = "c" }
-    a.x = {
-      value = 1,
-    }
-    b [refines] = { a }
-    b.y = {
-      [refines] = { Layer.reference (a).x }
-    }
-    c [refines] = { b }
-    c.z = {
-      [refines] = { Layer.reference (a).y }
-    }
-    local d = Layer.flatten (c, { compact = true })
-    assert.are.equal (d.x.value, d.y.value)
-    assert.are.equal (d.y.value, d.z.value)
-    assert.are.equal (d.z.value, 1)
-    assert.are.equal (d.z.value, c.z.value)
-    assert.are.equal (c.z.value, b.y.value)
-    assert.are.equal (b.y.value, a.x.value)
-  end)
-end)
+-- describe ("issue #10 #current", function ()
+--   it ("is fixed", function ()
+--     local Layer   = require "layeredata"
+--     local refines = Layer.key.refines
+--     local a = Layer.new { name = "a" }
+--     local b = Layer.new { name = "b" }
+--     local c = Layer.new { name = "c" }
+--     a.x = {
+--       value = 1,
+--     }
+--     b [refines] = { a }
+--     b.y = {
+--       [refines] = { Layer.reference (a).x }
+--     }
+--     c [refines] = { b }
+--     c.z = {
+--       [refines] = { Layer.reference (a).y }
+--     }
+--     local d = Layer.flatten (c, { compact = true })
+--     assert.are.equal (d.x.value, d.y.value)
+--     assert.are.equal (d.y.value, d.z.value)
+--     assert.are.equal (d.z.value, 1)
+--     assert.are.equal (d.z.value, c.z.value)
+--     assert.are.equal (c.z.value, b.y.value)
+--     assert.are.equal (b.y.value, a.x.value)
+--   end)
+-- end)
 
-describe ("issue #11", function ()
-  it ("is fixed", function ()
-    local Layer   = require "layeredata"
-    local refines = Layer.key.refines
-    local layer   = Layer.new { name = "layer" }
-    layer.a = {
-      x = {
-        z = {
-          value = 1,
-        },
-      },
-    }
-    layer.a.y = {
-      [refines] = { Layer.reference (layer.a).x }
-    }
-    local flat = Layer.flatten (layer)
-    assert.are.equal (flat.a.y.z.value, layer.a.x.z.value)
-    assert.are.equal (flat.a.x.z.value, 1)
-  end)
-end)
+-- describe ("issue #11", function ()
+--   it ("is fixed", function ()
+--     local Layer   = require "layeredata"
+--     local refines = Layer.key.refines
+--     local layer   = Layer.new { name = "layer" }
+--     layer.a = {
+--       x = {
+--         z = {
+--           value = 1,
+--         },
+--       },
+--     }
+--     layer.a.y = {
+--       [refines] = { Layer.reference (layer.a).x }
+--     }
+--     local flat = Layer.flatten (layer)
+--     assert.are.equal (flat.a.y.z.value, layer.a.x.z.value)
+--     assert.are.equal (flat.a.x.z.value, 1)
+--   end)
+-- end)
 
 describe ("issue #12", function ()
   it ("is fixed", function ()
@@ -326,62 +326,62 @@ describe ("issue #18", function ()
   end)
 end)
 
-describe ("issue #19", function ()
-  it ("is fixed", function ()
-    local Layer   = require "layeredata"
-    local meta    = Layer.key.meta
-    local checks  = Layer.key.checks
-    local refines = Layer.key.refines
-    local layer   = Layer.new { name = "record" }
-    local model   = Layer.new { name = "record instance" }
-    layer [meta] = {
-      record = {
-        [meta] = {
-          __tags__ = {},
-        },
-        [checks] = {
-          check_tags = function (proxy)
-            local message = ""
-            local tags = proxy [meta].__tags__
-            for tag, value in Layer.pairs (tags) do
-              if value ["__value_type__"] ~= nil
-              or value ["__value_container__"] ~= nil then
-                if proxy [tag] == nil then
-                  message = message .. "Key '" .. tostring (tag) .. "' is missing. "
-                elseif value ["__value_type__"] ~= nil
-                   and type (proxy [tag]) ~= type (value["__value_type__"]) then
-                  message = message .. "Type of " .. tostring(tag) .. "'s value is wrong. "
-                elseif value["__value_container__"] ~= nil then
-                  for k, v in Layer.pairs (value ["__value_container__"]) do
-                    print(k, v)
-                  end
-                end
-              end
-            end
-            if message ~= "" then
-              return "check_tags", message
-            end
-          end,
-        },
-      },
-    }
-    model [refines] = {
-      layer,
-    }
-    model.model = {
-      [refines] = {
-        Layer.reference (model) [meta].record,
-      },
-      [meta] = {
-        __tags__ = {
-          name = { __value_type__ = "string" },
-        },
-      },
-      name = "model",
-    }
-    Layer.encode (Layer.flatten (model))
-  end)
-end)
+-- describe ("issue #19", function ()
+--   it ("is fixed", function ()
+--     local Layer   = require "layeredata"
+--     local meta    = Layer.key.meta
+--     local checks  = Layer.key.checks
+--     local refines = Layer.key.refines
+--     local layer   = Layer.new { name = "record" }
+--     local model   = Layer.new { name = "record instance" }
+--     layer [meta] = {
+--       record = {
+--         [meta] = {
+--           __tags__ = {},
+--         },
+--         [checks] = {
+--           check_tags = function (proxy)
+--             local message = ""
+--             local tags = proxy [meta].__tags__
+--             for tag, value in Layer.pairs (tags) do
+--               if value ["__value_type__"] ~= nil
+--               or value ["__value_container__"] ~= nil then
+--                 if proxy [tag] == nil then
+--                   message = message .. "Key '" .. tostring (tag) .. "' is missing. "
+--                 elseif value ["__value_type__"] ~= nil
+--                    and type (proxy [tag]) ~= type (value["__value_type__"]) then
+--                   message = message .. "Type of " .. tostring(tag) .. "'s value is wrong. "
+--                 elseif value["__value_container__"] ~= nil then
+--                   for k, v in Layer.pairs (value ["__value_container__"]) do
+--                     print(k, v)
+--                   end
+--                 end
+--               end
+--             end
+--             if message ~= "" then
+--               return "check_tags", message
+--             end
+--           end,
+--         },
+--       },
+--     }
+--     model [refines] = {
+--       layer,
+--     }
+--     model.model = {
+--       [refines] = {
+--         Layer.reference (model) [meta].record,
+--       },
+--       [meta] = {
+--         __tags__ = {
+--           name = { __value_type__ = "string" },
+--         },
+--       },
+--       name = "model",
+--     }
+--     Layer.encode (Layer.flatten (model))
+--   end)
+-- end)
 
 describe ("issue #20", function ()
   it ("is fixed", function ()
@@ -410,25 +410,25 @@ describe ("issue #20", function ()
   end)
 end)
 
-describe ("issue #22", function ()
-  it ("is fixed", function ()
-    local Layer    = require "layeredata"
-    local meta     = Layer.key.meta
-    local defaults = Layer.key.defaults
-    local layer    = Layer.new { name = "layer" }
-    layer.d = {
-      v = 0,
-    }
-    layer.a = {
-      x = 1,
-      y = 2,
-      [meta]     = { z = 3 },
-      [defaults] = { Layer.reference (layer).d },
-    }
-    local flattened = Layer.flatten (layer)
-    assert.are.equal (flattened.a [meta].z, 3)
-  end)
-end)
+-- describe ("issue #22", function ()
+--   it ("is fixed", function ()
+--     local Layer    = require "layeredata"
+--     local meta     = Layer.key.meta
+--     local defaults = Layer.key.defaults
+--     local layer    = Layer.new { name = "layer" }
+--     layer.d = {
+--       v = 0,
+--     }
+--     layer.a = {
+--       x = 1,
+--       y = 2,
+--       [meta]     = { z = 3 },
+--       [defaults] = { Layer.reference (layer).d },
+--     }
+--     local flattened = Layer.flatten (layer)
+--     assert.are.equal (flattened.a [meta].z, 3)
+--   end)
+-- end)
 
 describe ("issue #23", function ()
   it ("is fixed", function ()

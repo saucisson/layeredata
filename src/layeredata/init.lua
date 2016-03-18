@@ -471,7 +471,7 @@ function Proxy.__index (proxy, key)
     end
   end
   if getmetatable (result) == Proxy then
-    -- Proxy.check (result)
+    Proxy.check (result)
   end
   return result
 end
@@ -583,39 +583,40 @@ function Proxy.equivalents (proxy, seen, options)
   seen    = seen    or Seen.new ()
   options = options or {}
   local coroutine = Coromake ()
-  local keys      = proxy.__keys
-  local function iterate (current, nkeys)
-    print (proxy, current)
-    if seen [proxy] [current] [nkeys] == true then
+  local function iterate (where, current)
+    if seen [proxy] [current] [where] == true then
       return
     end
-    seen [proxy] [current] [nkeys] = true
-    local raw = Proxy.rawget (current)
-    if (options.all or raw ~= nil) and nkeys == 0 then
-      coroutine.yield (current, raw)
+    seen [proxy] [current] [where] = true
+    local n    = #current.__keys - #where.__keys
+    local raw  = Proxy.rawget (where)
+    local keys = current.__keys
+    if (options.all or raw ~= nil) and n == 0 then
+      coroutine.yield (where, raw)
     end
     local refines = type (raw) == "table" and raw [Layer.key.refines]
     for _, x in ipairs (refines or {}) do
       local p = proxy
-      for _ = 1, nkeys+1 do
-        p = getmetatable (p) == Proxy and p.__parent
+      for _ = 1, n+1 do
+        p = getmetatable (p) == Proxy and p.__parent or p
       end
       while getmetatable (x) == Reference do
         x = Reference.resolve (x, p, seen)
       end
-      assert (getmetatable (x) == Proxy)
-      for i = #keys-nkeys+1, #keys do
-        x = Proxy.sub (x, keys [i])
+      if getmetatable (x) == Proxy then
+        for i = #keys-n+1, #keys do
+          x = Proxy.sub (x, keys [i])
+        end
+        iterate (x, x)
       end
-      iterate (x, 0)
     end
-    local parent   = current.__parent
-    local key      = current.__keys [#current.__keys]
-    current        = getmetatable (key) ~= Key and current or nil
-    local rawp     = current and parent and Proxy.rawget (parent)
+    local parent   = where.__parent
+    local key      = where.__keys [#where.__keys]
+    where          = getmetatable (key) ~= Key and where or nil
+    local rawp     = where and parent and Proxy.rawget (parent)
     local defaults = type (rawp) == "table" and rawp [Layer.key.defaults]
     local p = proxy
-    for _ = 1, nkeys+1 do
+    for _ = 1, n+1 do
       p = getmetatable (p) == Proxy and p.__parent
     end
     for _, x in ipairs (defaults or {}) do
@@ -623,18 +624,18 @@ function Proxy.equivalents (proxy, seen, options)
         x = Reference.resolve (x, p, seen)
       end
       if getmetatable (x) == Proxy then
-        for i = #keys-nkeys+1, #keys do
+        for i = #keys-n+1, #keys do
           x = Proxy.sub (x, keys [i])
         end
-        iterate (x, 0)
+        iterate (x, x)
       end
     end
     if parent then
-      iterate (parent, nkeys+1)
+      iterate (parent, current)
     end
   end
   return coroutine.wrap (function ()
-    iterate (proxy, 0)
+    iterate (proxy, proxy)
   end)
 end
 
@@ -755,49 +756,6 @@ function Proxy.__pairs (proxy)
     end
     cache [proxy] = cached
   end)
-end
-
-function Layer.flatten (proxy, options)
-  assert (getmetatable (proxy) == Proxy)
-  if type (options) ~= "table" then
-    options = {}
-  end
-  local iterate     = Proxy.__pairs
-  local references  = options.references
-  local equivalents = {}
-  local function f (p)
-    if getmetatable (p) ~= Proxy then
-      return p
-    elseif equivalents [p] then
-      return equivalents [p]
-    end
-    local result = {}
-    equivalents [p] = result
-    for k in iterate (p) do
-      if options [k] ~= false then
-        local v
-        if references then
-          v = Proxy.equivalents (Proxy.sub (p, k)) ()
-        else
-          v = p [k]
-        end
-        if getmetatable (v) == Reference then
-          result [f (k)] = v
-        else
-          result [f (k)] = f (v)
-        end
-      end
-    end
-    if not options.compact and options [Layer.key.meta] ~= false then
-      result [Layer.key.meta] = f (p [Layer.key.meta])
-    end
-    return result
-  end
-  local result = f (proxy)
-  return Layer.new {
-    name = "flattened:" .. tostring (proxy.__layer.__name),
-    data = result,
-  }
 end
 
 function Reference.new (target)
