@@ -594,13 +594,16 @@ function Proxy.equivalents (proxy, seen, options)
     if (options.all or raw ~= nil) and n == 0 then
       coroutine.yield (where, raw)
     end
-    local refines = type (raw) == "table" and raw [Layer.key.refines]
+    local refines = type (raw) == "table"
+                and getmetatable (raw) ~= Proxy
+                and getmetatable (raw) ~= Reference
+                and raw [Layer.key.refines]
     for _, x in ipairs (refines or {}) do
       local p = proxy
       for _ = 1, n+1 do
         p = getmetatable (p) == Proxy and p.__parent or p
       end
-      while getmetatable (x) == Reference do
+      while x and getmetatable (x) == Reference do
         x = Reference.resolve (x, p, seen)
       end
       if getmetatable (x) == Proxy then
@@ -612,15 +615,14 @@ function Proxy.equivalents (proxy, seen, options)
     end
     local parent   = where.__parent
     local key      = where.__keys [#where.__keys]
-    where          = getmetatable (key) ~= Key and where or nil
-    local rawp     = where and parent and Proxy.rawget (parent)
+    local rawp     = getmetatable (key) ~= Key and where and parent and Proxy.rawget (parent)
     local defaults = type (rawp) == "table" and rawp [Layer.key.defaults]
     local p = proxy
     for _ = 1, n+1 do
       p = getmetatable (p) == Proxy and p.__parent
     end
     for _, x in ipairs (defaults or {}) do
-      while getmetatable (x) == Reference do
+      while x and getmetatable (x) == Reference do
         x = Reference.resolve (x, p, seen)
       end
       if getmetatable (x) == Proxy then
