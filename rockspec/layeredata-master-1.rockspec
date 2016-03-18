@@ -17,7 +17,6 @@ observed through several layers.
 }
 
 dependencies = {
-  "c3",
   "coronest",
   "uuid",
 }
@@ -25,6 +24,6 @@ dependencies = {
 build = {
   type    = "builtin",
   modules = {
-    layeredata = "src/layeredata.lua",
+    layeredata = "src/layeredata/init.lua",
   },
 }
