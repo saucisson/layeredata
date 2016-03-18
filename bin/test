@@ -1,0 +1,10 @@
+#! /usr/bin/env bash
+
+set -e
+
+for i in {1..50}; do
+  for dir in lua*; do
+    echo "Testing ${dir}..."
+    ${dir}/bin/busted src/
+  done
+done
