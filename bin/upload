@@ -1,0 +1,10 @@
+#! /usr/bin/env bash
+
+if [ -z "${VAR+x}" ] || ( [ "${TRAVIS_BRANCH}" = "master" ] && [ "${TRAVIS_PULL_REQUEST}" = "false" ] ); then
+  tag=$(git describe --tags --abbrev=0 || echo "0.0")
+  count=$(git rev-list --count HEAD ^"${tag}" || git rev-list --count HEAD)
+  cd rockspec || exit 1
+  sed -e "s/master-1/${tag}-${count}/" layeredata-master-1.rockspec > layeredata-"${tag}"-"${count}".rockspec
+  echo luarocks upload layeredata-"${tag}"-"${count}".rockspec --api-key=${LUAROCKS_API_KEY}
+  cd ..
+fi
