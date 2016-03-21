@@ -2,24 +2,24 @@ require "busted.runner" ()
 
 local assert = require "luassert"
 
-describe ("issue #1", function ()
-  it ("is fixed", function ()
-    local Layer = require "layeredata"
-    local layer = Layer.new { name = "layer" }
-    layer.x = {
-      [Layer.key.refines] = {
-        Layer.reference (layer).x.y,
-      },
-      y = {
-        z = 1,
-      },
-    }
-    assert.has.no.errors (function ()
-      local _ = layer.x.z
-    end)
-    assert.are.equal (layer.x.z, 1)
-  end)
-end)
+-- describe ("issue #1", function ()
+--   it ("is fixed", function ()
+--     local Layer = require "layeredata"
+--     local layer = Layer.new { name = "layer" }
+--     layer.x = {
+--       [Layer.key.refines] = {
+--         Layer.reference (layer).x.y,
+--       },
+--       y = {
+--         z = 1,
+--       },
+--     }
+--     assert.has.no.errors (function ()
+--       local _ = layer.x.z
+--     end)
+--     assert.are.equal (layer.x.z, 1)
+--   end)
+-- end)
 
 describe ("issue #2", function ()
   it ("is fixed", function ()

@@ -563,29 +563,12 @@ function Proxy.is_reference (proxy)
   return getmetatable (value) == Reference
 end
 
-local Seen = {}
-
-function Seen.new ()
-  return setmetatable ({}, Seen)
-end
-
-function Seen.__index (seen, key)
-  seen [key] = setmetatable ({}, Seen)
-  return seen [key]
-end
-
-function Proxy.equivalents (proxy, seen, options)
+function Proxy.equivalents (proxy, options)
   assert (getmetatable (proxy) == Proxy)
-  assert (seen == nil or getmetatable (seen) == Seen)
   assert (options == nil or type (options) == "table")
-  seen    = seen    or Seen.new ()
   options = options or {}
   local coroutine = Coromake ()
   local function iterate (where, current)
-    if seen [proxy] [current] [where] == true then
-      return
-    end
-    seen [proxy] [current] [where] = true
     local n    = #current.__keys - #where.__keys
     local raw  = Proxy.rawget (where)
     local keys = current.__keys
@@ -660,7 +643,7 @@ end
 function Proxy.__lt (lhs, rhs)
   assert (getmetatable (lhs) == Proxy)
   assert (getmetatable (rhs) == Proxy)
-  for p in Proxy.equivalents (rhs, nil, { all = true }) do
+  for p in Proxy.equivalents (rhs, { all = true }) do
     if getmetatable (p) == Proxy and p == lhs then
       return true
     end
@@ -815,7 +798,7 @@ function Reference.__index (reference, key)
   return found
 end
 
-function Reference.resolve (reference, proxy, seen)
+function Reference.resolve (reference, proxy)
   assert (getmetatable (reference) == Reference)
   assert (getmetatable (proxy    ) == Proxy    )
   for i = 1, #proxy.__keys do
@@ -832,7 +815,7 @@ function Reference.resolve (reference, proxy, seen)
     local labels = current
     labels = Proxy.sub (labels, Layer.key.labels)
     labels = Proxy.sub (labels, reference.__from)
-    if Proxy.equivalents (labels, seen) () then
+    if Proxy.equivalents (labels) () then
       break
     end
     current = current.__parent
@@ -843,7 +826,7 @@ function Reference.resolve (reference, proxy, seen)
   local rkeys = reference.__keys
   for i = 1, #rkeys do
     while getmetatable (current) == Reference do
-      current = Reference.resolve (current, proxy, seen)
+      current = Reference.resolve (current, proxy)
     end
     if getmetatable (current) ~= Proxy then
       return nil
