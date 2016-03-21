@@ -1,4 +1,4 @@
-box: saucisson:lua-testenv
+box: saucisson/lua-testenv
 build:
   steps:
     - script:
