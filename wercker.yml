@@ -20,4 +20,11 @@ deploy:
     - script:
         name: Upload to luarocks
         code: |
-          ./bin/upload
+          tag=$(git describe --tags --abbrev=0 || echo "0.0")
+          count=$(git rev-list --count HEAD ^"${tag}" || git rev-list --count HEAD)
+          cd rockspec || exit 1
+          rockspec=layeredata-master-1.rockspec
+          name=layeredata
+          sed -e "s/master-1/${tag}-${count}/" "${rockspec}" > "${name}"-"${tag}"-"${count}".rockspec
+          luarocks upload "${name}"-"${tag}"-"${count}".rockspec --api-key="${LUAROCKS_API_KEY}"
+          cd ..
