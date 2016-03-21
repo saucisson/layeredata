@@ -1,0 +1,14 @@
+box: saucisson:lua-testenv
+build:
+  steps:
+    - script:
+        name: "Run tests"
+        code: |
+          ./bin/test /home/lua/
+
+deploy:
+  luarocks:
+    - script:
+        name: Upload to luarocks
+        code: |
+          ./bin/upload

@@ -28,7 +28,6 @@ script:
 
 after_success:
   - luacov-coveralls --exclude "spec" --exclude "lua_install"
-  - bin/upload
 
 notifications:
   recipients:
