@@ -622,7 +622,7 @@ function Proxy.equivalents (proxy, options)
     for i = #search, 1, -1 do
       local x = search [i]
       while x and getmetatable (x) == Reference do
-        x = Reference.resolve (x, restricted_proxy, seen)
+        x = Reference.resolve (x, restricted_proxy)
       end
       if getmetatable (x) == Proxy then
         for j = #keys-n+1, #keys do
