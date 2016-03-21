@@ -18,8 +18,9 @@ local Key = setmetatable ({
   __tostring = function () return "Key" end
 })
 
-local IgnoreKeys   = { __mode = "k" }
-local IgnoreValues = { __mode = "v" }
+local IgnoreKeys   = { __mode = "k"  }
+local IgnoreValues = { __mode = "v"  }
+local IgnoreAll    = { __mode = "kv" }
 
 local Read_Only = {
   __index    = assert,
@@ -118,6 +119,7 @@ function Layer.clear_caches (proxy)
       noiterate_noresolve = setmetatable ({}, Cache),
       noiterate_resolve   = setmetatable ({}, Cache),
     },
+    labels  = setmetatable ({}, IgnoreKeys),
   }
 end
 
@@ -498,15 +500,18 @@ function Proxy.__newindex (proxy, key, value)
   value = Layer.import (value, proxy)
   local current = proxy.__layer.__data
   local keys    = proxy.__keys
-  for i = 1, #keys do
-    local k = keys [i]
+  local has_messages = key == Layer.key.messages
+  for _, k in ipairs (keys) do
+    if k == Layer.key.messages then
+      has_messages = true
+    end
     if current [k] == nil then
       current [k] = {}
     end
     current = current [k]
   end
   current [key] = value
-  if proxy.__cache then
+  if proxy.__cache and not has_messages then
     Layer.clear_caches (proxy)
   end
   for observer in pairs (proxy.__layer.__observers) do
@@ -798,11 +803,22 @@ function Reference.__index (reference, key)
   return found
 end
 
+local nothing = {}
+
 function Reference.resolve (reference, proxy)
   assert (getmetatable (reference) == Reference)
   assert (getmetatable (proxy    ) == Proxy    )
-  for i = 1, #proxy.__keys do
-    local key = proxy.__keys [i]
+  local cache  = Layer.caches.labels
+  local cached = cache [proxy]
+             and cache [proxy] [reference]
+  if cached ~= nil then
+    if cached == nothing then
+      cached = nil
+    end
+    return cached
+  end
+  local current = proxy
+  for i, key in ipairs (proxy.__keys) do
     if getmetatable (key) == Key then
       for _ = #proxy.__keys, i, -1 do
         proxy = proxy.__parent
@@ -810,7 +826,6 @@ function Reference.resolve (reference, proxy)
       break
     end
   end
-  local current = proxy
   while current do
     local labels = current
     labels = Proxy.sub (labels, Layer.key.labels)
@@ -821,6 +836,8 @@ function Reference.resolve (reference, proxy)
     current = current.__parent
   end
   if not current then
+    cache [proxy] = cache [proxy] or setmetatable ({}, IgnoreAll)
+    cache [proxy] [reference] = nothing
     return nil
   end
   local rkeys = reference.__keys
@@ -829,10 +846,14 @@ function Reference.resolve (reference, proxy)
       current = Reference.resolve (current, proxy)
     end
     if getmetatable (current) ~= Proxy then
+      cache [proxy] = cache [proxy] or setmetatable ({}, IgnoreAll)
+      cache [proxy] [reference] = nothing
       return nil
     end
     current = current [rkeys [i]]
   end
+  cache [proxy] = cache [proxy] or setmetatable ({}, IgnoreAll)
+  cache [proxy] [reference] = current
   return current
 end
 
