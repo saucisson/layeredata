@@ -2,9 +2,14 @@
 
 set -e
 
+for dir in lua*; do
+  echo "Installing in ${dir}..."
+  ${dir}/bin/luarocks make rockspec/*-master-1.rockspec
+done
+
 for i in {1..50}; do
   for dir in lua*; do
-    echo "Testing ${dir}..."
+    echo "Testing in ${dir}..."
     ${dir}/bin/busted src/
   done
 done

@@ -1,5 +1,7 @@
 #! /usr/bin/env bash
 
+set -e
+
 hererocks -r^ --lua=5.1                  lua51
 hererocks -r^ --lua=5.2    --compat=all  lua52c
 hererocks -r^ --lua=5.2    --compat=none lua52
@@ -16,5 +18,13 @@ for dir in lua*; do
   ${dir}/bin/luarocks install busted
   ${dir}/bin/luarocks install luacov
   ${dir}/bin/luarocks install luacov-coveralls
-  ${dir}/bin/luarocks make rockspec/layeredata-master-1.rockspec
+  if [ -d "rockspec" ]; then
+    ( cd rockspec
+      for rockspec in *-master-1.rockspec; do
+        name=${rockspec%%-master-1.rockspec}
+        sed -e "s/master-1/${tag}-${count}/" "${rockspec}" > "${name}"-"${tag}"-"${count}".rockspec
+        echo luarocks upload "${name}"-"${tag}"-"${count}".rockspec --api-key=${LUAROCKS_API_KEY}
+      done
+    )
+  fi
 done

@@ -4,7 +4,10 @@ if [ -z "${VAR+x}" ] || ( [ "${TRAVIS_BRANCH}" = "master" ] && [ "${TRAVIS_PULL_
   tag=$(git describe --tags --abbrev=0 || echo "0.0")
   count=$(git rev-list --count HEAD ^"${tag}" || git rev-list --count HEAD)
   cd rockspec || exit 1
-  sed -e "s/master-1/${tag}-${count}/" layeredata-master-1.rockspec > layeredata-"${tag}"-"${count}".rockspec
-  echo luarocks upload layeredata-"${tag}"-"${count}".rockspec --api-key=${LUAROCKS_API_KEY}
+  for rockspec in *-master-1.rockspec; do
+    name=${rockspec%%-master-1.rockspec}
+    sed -e "s/master-1/${tag}-${count}/" "${rockspec}" > "${name}"-"${tag}"-"${count}".rockspec
+    luarocks upload "${name}"-"${tag}"-"${count}".rockspec --api-key=${LUAROCKS_API_KEY}
+  done
   cd ..
 fi
