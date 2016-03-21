@@ -2,14 +2,18 @@
 
 set -e
 
-for dir in lua*; do
+root=${1:-$PWD}
+
+for dir in "${root}"/lua*; do
   echo "Installing in ${dir}..."
-  ${dir}/bin/luarocks make rockspec/*-master-1.rockspec
+  "${dir}/bin/luarocks" make rockspec/*-master-1.rockspec
 done
 
-for i in {1..50}; do
-  for dir in lua*; do
+"${root}"/lua52/bin/luacheck --std=max+busted src/
+
+for _ in {1..50}; do
+  for dir in "${root}"/lua*; do
     echo "Testing in ${dir}..."
-    ${dir}/bin/busted src/
+    "${dir}/bin/busted" src/
   done
 done

@@ -13,18 +13,9 @@ hererocks -r^ --luajit=2.1 --compat=none luajit21
 hererocks -r^ --luajit=2.1 --compat=5.2  luajit21c
 
 for dir in lua*; do
-  ${dir}/bin/luarocks install luasec
-  ${dir}/bin/luarocks install luacheck
-  ${dir}/bin/luarocks install busted
-  ${dir}/bin/luarocks install luacov
-  ${dir}/bin/luarocks install luacov-coveralls
-  if [ -d "rockspec" ]; then
-    ( cd rockspec
-      for rockspec in *-master-1.rockspec; do
-        name=${rockspec%%-master-1.rockspec}
-        sed -e "s/master-1/${tag}-${count}/" "${rockspec}" > "${name}"-"${tag}"-"${count}".rockspec
-        echo luarocks upload "${name}"-"${tag}"-"${count}".rockspec --api-key=${LUAROCKS_API_KEY}
-      done
-    )
-  fi
+  "${dir}/bin/luarocks" install luasec
+  "${dir}/bin/luarocks" install luacheck
+  "${dir}/bin/luarocks" install busted
+  "${dir}/bin/luarocks" install luacov
+  "${dir}/bin/luarocks" install luacov-coveralls
 done
