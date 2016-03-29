@@ -453,8 +453,7 @@ function Proxy.__index (proxy, key)
     cache [proxy] = Layer.tag.computing
   end
   local result
-  local exists = Proxy.equivalents (proxy) ()
-  if exists then
+  if Proxy.exists (proxy) then
     local _, value = Proxy.equivalents (proxy) ()
     if getmetatable (value) == Reference then
       result = Reference.resolve (value, proxy)
@@ -632,7 +631,7 @@ function Proxy.equivalents (proxy, options)
       end
     end
     if  search_default
-    and not options.exists
+    and not (options.exists and where == proxy)
     and Proxy.exists (where)
     and #where.__keys < #current.__keys
     and getmetatable (keys [#where.__keys+1]) ~= Key then
@@ -706,8 +705,7 @@ function Proxy.__len (proxy)
     return cache [proxy]
   end
   for i = 1, math.huge do
-    local result = Proxy.equivalents (Proxy.sub (proxy, i)) ()
-    if result == nil then
+    if not Proxy.exists (Proxy.sub (proxy, i)) then
       cache [proxy] = i-1
       return i-1
     end
