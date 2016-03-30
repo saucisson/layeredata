@@ -630,11 +630,15 @@ function Proxy.equivalents (proxy, options)
         end
       end
     end
-    if  search_default
-    and not (options.exists and where == proxy)
-    and Proxy.exists (where)
-    and #where.__keys < #current.__keys
-    and getmetatable (keys [#where.__keys+1]) ~= Key then
+    if options.exists and where == current.__parent then
+      search_default = false
+    else
+      search_default = search_default
+                   and #where.__keys < #current.__keys
+                   and getmetatable (keys [#where.__keys+1]) ~= Key
+                   and Proxy.exists (where)
+    end
+    if search_default then
       local rawp     = Proxy.rawget (where)
       local defaults = type (rawp) == "table"
                    and rawp [Layer.key.defaults]
