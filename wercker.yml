@@ -2,18 +2,36 @@ box: saucisson/lua-testenv
 build:
   steps:
     - script:
+        name: "Install"
+        code: |
+          for dir in /home/lua/lua*; do
+            if [ -d "${dir}" ]; then
+              echo "Installing in ${dir}..."
+              "${dir}/bin/luarocks" make rockspec/*-master-1.rockspec
+            fi
+          done
+    - script:
+        name: "Run checks"
+        code: |
+          for dir in /home/lua/lua*; do
+            if [ -d "${dir}" ]; then
+              echo "Checking in ${dir}..."
+              "${dir}/bin/luacheck" --std=max+busted src/
+            fi
+          done
+    - script:
         name: "Run tests"
         code: |
           for dir in /home/lua/lua*; do
-            echo "Installing in ${dir}..."
-            "${dir}/bin/luarocks" make rockspec/*-master-1.rockspec
+            if [ -d "${dir}" ]; then
+              echo "Testing in ${dir}..."
+              "${dir}/bin/busted" --coverage --verbose src/
+            fi
           done
-          for dir in /home/lua/lua*; do
-            echo "Checking in ${dir}..."
-            "${dir}/bin/luacheck" --std=max+busted src/
-            echo "Testing in ${dir}..."
-            "${dir}/bin/busted" src/
-          done
+    - script:
+        name: "Export to coveralls"
+        code: |
+          "${dir}/bin/luacov-coveralls" --repo-token "${COVERALLS_TOKEN}"
 
 deploy:
   luarocks:
