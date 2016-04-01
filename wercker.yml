@@ -32,9 +32,9 @@ build:
     - script:
         name: "Export to coveralls"
         code: |
-          "${dir}/bin/luacov-coveralls" --repo-token "${COVERALLS_TOKEN}" \
-                                        --exclude share --exclude busted \
-                                        --include layeredata
+          "lua52/bin/luacov-coveralls" --repo-token "${COVERALLS_TOKEN}" \
+                                       --exclude share --exclude busted \
+                                       --include layeredata
 
 deploy:
   luarocks:
@@ -47,5 +47,5 @@ deploy:
           rockspec=layeredata-master-1.rockspec
           name=layeredata
           sed -e "s/master-1/${tag}-${count}/" "${rockspec}" > "${name}"-"${tag}"-"${count}".rockspec
-          luarocks upload "${name}"-"${tag}"-"${count}".rockspec --api-key="${LUAROCKS_API_KEY}"
+          "lua52/bin/luarocks" upload "${name}"-"${tag}"-"${count}".rockspec --api-key="${LUAROCKS_API_KEY}"
           cd ..
