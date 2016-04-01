@@ -2,7 +2,7 @@ box: saucisson/lua-testenv
 build:
   steps:
     - script:
-        name: "Install module"
+        name: "install module"
         code: |
           for dir in /home/lua/lua*; do
             if [ -d "${dir}" ]; then
@@ -11,7 +11,7 @@ build:
             fi
           done
     - script:
-        name: "Run checks"
+        name: "run checks"
         code: |
           for dir in /home/lua/lua*; do
             if [ -d "${dir}" ]; then
@@ -20,7 +20,7 @@ build:
             fi
           done
     - script:
-        name: "Run tests"
+        name: "run tests"
         code: |
           for dir in /home/lua/lua*; do
             if [ -d "${dir}" ]; then
@@ -30,8 +30,10 @@ build:
           done
   after-steps:
     - script:
-        name: "Export to coveralls"
+        name: "export to coveralls"
         code: |
+          ls
+          ls lua52/bin
           "lua52/bin/luacov-coveralls" --repo-token "${COVERALLS_TOKEN}" \
                                        --exclude share --exclude busted \
                                        --include layeredata
@@ -39,7 +41,7 @@ build:
 deploy:
   luarocks:
     - script:
-        name: "Upload to luarocks"
+        name: "upload to luarocks"
         code: |
           tag=$(git describe --tags --abbrev=0 || echo "0.0")
           count=$(git rev-list --count HEAD ^"${tag}" || git rev-list --count HEAD)
