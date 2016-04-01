@@ -26,8 +26,8 @@ script:
   - luacheck --std max+busted src/
   - busted --verbose --coverage src/
 
-after_success:
-  - luacov-coveralls --exclude "spec" --exclude "lua_install"
+# after_success:
+#   - luacov-coveralls --exclude "spec" --exclude "lua_install"
 
 notifications:
   recipients:
