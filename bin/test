@@ -17,7 +17,7 @@ for _ in {1..50}; do
   for dir in "${root}"/lua*; do
     if [ -d "${dir}" ]; then
       echo "Testing in ${dir}..."
-      "${dir}/bin/busted" --coverage src/
+      "${dir}/bin/busted" src/
     fi
   done
 done
