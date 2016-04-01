@@ -34,10 +34,10 @@ build:
         code: |
           /home/lua/lua52/bin/luacov-coveralls \
             --repo-token "${COVERALLS_TOKEN}" \
-            --exclude share --exclude busted \
+            --exclude share --exclude busted --exclude _spec \
             --include layeredata \
             --root src/ \
-            --build-number "${WERCKER_GIT_BRANCH}"
+            --service-name "${WERCKER_GIT_BRANCH}"
 
 deploy:
   luarocks:
