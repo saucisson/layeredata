@@ -111,17 +111,13 @@ end
 function Layer.clear_caches (proxy)
   assert (proxy == nil or getmetatable (proxy) == Proxy)
   Layer.caches = {
-    index   = setmetatable ({}, IgnoreKeys),
-    pairs   = setmetatable ({}, IgnoreKeys),
-    ipairs  = setmetatable ({}, IgnoreKeys),
-    len     = setmetatable ({}, IgnoreKeys),
-    check   = setmetatable ({}, IgnoreKeys),
-    perform = {
-      noiterate_noresolve = setmetatable ({}, Cache),
-      noiterate_resolve   = setmetatable ({}, Cache),
-    },
-    labels  = setmetatable ({}, IgnoreKeys),
-    exists  = setmetatable ({}, IgnoreKeys),
+    index  = setmetatable ({}, IgnoreKeys),
+    pairs  = setmetatable ({}, IgnoreKeys),
+    ipairs = setmetatable ({}, IgnoreKeys),
+    len    = setmetatable ({}, IgnoreKeys),
+    check  = setmetatable ({}, IgnoreKeys),
+    labels = setmetatable ({}, IgnoreKeys),
+    exists = setmetatable ({}, IgnoreKeys),
   }
 end
 
