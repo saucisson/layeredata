@@ -32,12 +32,13 @@ build:
     - script:
         name: "export to coveralls"
         code: |
+          branch=$(git rev-parse --abbrev-ref HEAD)
           /home/lua/lua52/bin/luacov-coveralls \
             --repo-token "${COVERALLS_TOKEN}" \
             --exclude share --exclude busted --exclude _spec \
-            --include layeredata \
+            --include cosy/formalism \
             --root src/ \
-            --service-name "${WERCKER_GIT_BRANCH}"
+            --service-name "${branch}"
 
 deploy:
   luarocks:
