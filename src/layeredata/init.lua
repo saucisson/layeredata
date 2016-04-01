@@ -20,7 +20,7 @@ local Key = setmetatable ({
 
 local IgnoreNone   = {}
 local IgnoreKeys   = { __mode = "k"  }
--- local IgnoreValues = { __mode = "v"  }
+local IgnoreValues = { __mode = "v"  }
 local IgnoreAll    = { __mode = "kv" }
 
 local Read_Only = {
@@ -56,7 +56,7 @@ Layer.tag = setmetatable ({
 
 Layer.coroutine = Coromake ()
 
-Layer.loaded = setmetatable ({}, { __mode = "v" })
+Layer.loaded = setmetatable ({}, IgnoreValues)
 
 function Layer.new (t)
   assert (t == nil or type (t) == "table")
