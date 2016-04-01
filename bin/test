@@ -5,15 +5,19 @@ set -e
 root=${1:-$PWD}
 
 for dir in "${root}"/lua*; do
-  echo "Installing in ${dir}..."
-  "${dir}/bin/luarocks" make rockspec/*-master-1.rockspec
+  if [ -d "${dir}" ]; then
+    echo "Installing in ${dir}..."
+    "${dir}/bin/luarocks" make rockspec/*-master-1.rockspec
+  fi
 done
 
 "${root}"/lua52/bin/luacheck --std=max+busted src/
 
 for _ in {1..50}; do
   for dir in "${root}"/lua*; do
-    echo "Testing in ${dir}..."
-    "${dir}/bin/busted" src/
+    if [ -d "${dir}" ]; then
+      echo "Testing in ${dir}..."
+      "${dir}/bin/busted" --coverage src/
+    fi
   done
 done
