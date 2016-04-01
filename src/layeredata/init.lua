@@ -18,8 +18,9 @@ local Key = setmetatable ({
   __tostring = function () return "Key" end
 })
 
+local IgnoreNone   = {}
 local IgnoreKeys   = { __mode = "k"  }
-local IgnoreValues = { __mode = "v"  }
+-- local IgnoreValues = { __mode = "v"  }
 local IgnoreAll    = { __mode = "kv" }
 
 local Read_Only = {
@@ -37,7 +38,7 @@ function Cache.__index (cache, key)
   return result
 end
 
-Reference.memo = setmetatable ({}, IgnoreValues)
+Reference.memo = setmetatable ({}, IgnoreNone)
 
 Layer.key = setmetatable ({
   checks   = setmetatable ({ name = "checks"   }, Key),
@@ -66,7 +67,7 @@ function Layer.new (t)
     __name      = t.name,
     __data      = Layer.import (t.data),
     __root      = false,
-    __proxies   = setmetatable ({}, IgnoreValues),
+    __proxies   = setmetatable ({}, IgnoreNone),
     __indent    = {},
     __observers = {},
   }, Layer)
@@ -394,7 +395,7 @@ function Proxy.sub (proxy, key)
     found = setmetatable ({
       __layer     = proxy.__layer,
       __keys      = nkeys,
-      __memo      = setmetatable ({}, IgnoreValues),
+      __memo      = setmetatable ({}, IgnoreNone),
       __parent    = proxy,
       __cache     = cache,
     }, Proxy)
@@ -793,7 +794,7 @@ function Reference.new (target)
   local result = setmetatable ({
     __from   = label,
     __keys   = {},
-    __memo   = setmetatable ({}, IgnoreValues),
+    __memo   = setmetatable ({}, IgnoreNone),
     __parent = false,
   }, Reference)
   Reference.memo [target] = result
@@ -813,7 +814,7 @@ function Reference.__index (reference, key)
     found = setmetatable ({
       __from   = reference.__from,
       __keys   = nkeys,
-      __memo   = setmetatable ({}, IgnoreValues),
+      __memo   = setmetatable ({}, IgnoreNone),
       __parent = reference,
     }, Reference)
     references [key] = found
