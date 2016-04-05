@@ -481,11 +481,13 @@ function Proxy.rawget (proxy)
   local current = proxy.__layer.__data
   local keys    = proxy.__keys
   for _, key in ipairs (keys) do
-    current = type (current) == "table"
-          and getmetatable (current) ~= Proxy
-          and getmetatable (current) ~= Reference
-          and current [key]
-           or nil
+    if  type (current) == "table"
+    and getmetatable (current) ~= Proxy
+    and getmetatable (current) ~= Reference then
+      current = current [key]
+    else
+      current = nil
+    end
   end
   return current
 end
@@ -574,9 +576,9 @@ function Proxy.exists (proxy)
   if cache [proxy] ~= nil then
     return cache [proxy]
   end
-  local result = not not Proxy.equivalents (proxy, {
+  local result = Proxy.equivalents (proxy, {
     exists = true,
-  }) ()
+  }) () ~= nil
   cache [proxy] = result
   return result
 end
