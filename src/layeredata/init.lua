@@ -338,6 +338,29 @@ end
   return result
 end
 
+function Layer.merge (proxy, target)
+  assert (getmetatable (proxy ) == Proxy)
+  assert (getmetatable (target) == Proxy)
+  local function iterate (s, t)
+    assert (type (s) == "table")
+    assert (type (t) == "table")
+    for k, v in pairs (s) do
+      if getmetatable (v) == Reference
+      or getmetatable (v) == Proxy
+      or type (v) ~= "table"
+      then
+        t [k] = v
+      elseif type (t [k]) == "table" then
+        iterate (v, t [k])
+      else
+        t [k] = {}
+        iterate (v, t [k])
+      end
+    end
+  end
+  iterate (proxy.__layer.__data, target.__layer.__data)
+end
+
 function Layer.dump (proxy)
   assert (getmetatable (proxy) == Proxy)
   local function convert (x, is_key)
