@@ -546,7 +546,7 @@ function Proxy.__newindex (proxy, key, value)
     Layer.clear_caches (proxy)
   end
   for observer in pairs (proxy.__layer.__observers) do
-    observer (proxy)
+    observer (proxy, key, value)
   end
 end
 
