@@ -18,4 +18,5 @@ for dir in lua*; do
   "${dir}/bin/luarocks" install busted
   "${dir}/bin/luarocks" install luacov
   "${dir}/bin/luarocks" install luacov-coveralls
+  "${dir}/bin/luarocks" install compat52 || true
 done
