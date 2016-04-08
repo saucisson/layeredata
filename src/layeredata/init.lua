@@ -710,7 +710,17 @@ function Proxy.__le (lhs, rhs)
   end
 end
 
-function Proxy.__mod (proxy, n)
+function Proxy.__mod (proxy, what)
+  assert (getmetatable (proxy) == Proxy)
+  assert (getmetatable (what ) == Proxy)
+  local result = Proxy.__new (what.__layer)
+  for _, key in ipairs (proxy.__keys) do
+    result = Proxy.sub (proxy, key)
+  end
+  return result
+end
+
+function Proxy.__div (proxy, n)
   assert (getmetatable (proxy) == Proxy)
   assert (type (n) == "number")
   if n >= 0 then
