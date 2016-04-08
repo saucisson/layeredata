@@ -72,16 +72,25 @@ function Layer.new (t)
     __observers = {},
   }, Layer)
   local proxy = Proxy.__new (layer)
+  local ref   = Layer.reference (proxy)
   layer.__root = proxy
-  Layer.loaded [t.name] = proxy
-  return proxy
+  Layer.loaded [t.name] = {
+    proxy = proxy,
+    ref   = ref,
+  }
+  return proxy, ref
 end
 
 function Layer.require (name)
-  if Layer.loaded [name] then
-    return Layer.loaded [name]
+  local loaded = Layer.loaded [name]
+  if loaded then
+    return loaded.proxy, loaded.ref
   else
-    return require (name) (Layer)
+    local layer, ref = Layer.new {
+      name = name,
+    }
+    require (name) (Layer, layer, ref)
+    return layer, ref
   end
 end
 
@@ -302,12 +311,9 @@ function Layer.encode (proxy)
     end
   end
   local result = [[
-return function (Layer)
+return function (Layer, layer, ref)
 {{{LOCALS}}}
-  return Layer.new {
-    name = {{{NAME}}},
-    data = {{{BODY}}},
-  }
+  Layer.Proxy.replacewith (layer, {{{BODY}}})
 end
   ]]
   local locals    = {}
