@@ -20,7 +20,7 @@ local Key = setmetatable ({
 
 local IgnoreNone   = {}
 local IgnoreKeys   = { __mode = "k"  }
-local IgnoreValues = { __mode = "v"  }
+-- local IgnoreValues = { __mode = "v"  }
 local IgnoreAll    = { __mode = "kv" }
 
 local Read_Only = {
@@ -56,7 +56,7 @@ Layer.tag = setmetatable ({
 
 Layer.coroutine = Coromake ()
 
-Layer.loaded = setmetatable ({}, IgnoreValues)
+Layer.loaded = setmetatable ({}, IgnoreNone)
 
 function Layer.new (t)
   assert (t == nil or type (t) == "table")
@@ -90,6 +90,10 @@ function Layer.require (name)
       name = name,
     }
     require (name) (Layer, layer, ref)
+    Layer.loaded [name] = {
+      proxy = layer,
+      ref   = ref,
+    }
     return layer, ref
   end
 end
@@ -345,7 +349,16 @@ function Layer.merge (proxy, target)
     assert (type (s) == "table")
     assert (type (t) == "table")
     for k, v in pairs (s) do
-      if getmetatable (v) == Reference
+      if k == Layer.key.checks
+      or k == Layer.key.defaults
+      or k == Layer.key.labels
+      or k == Layer.key.messages
+      or k == Layer.key.refines then
+        t [k] = {}
+        for kk, vv in pairs (v) do
+          t [k] [kk] = vv
+        end
+      elseif getmetatable (v) == Reference
       or getmetatable (v) == Proxy
       or type (v) ~= "table"
       then
@@ -500,7 +513,7 @@ function Proxy.__index (proxy, key)
     end
   end
   if getmetatable (result) == Proxy then
-   Proxy.check (result)
+    Proxy.check (result)
   end
   return result
 end
@@ -616,8 +629,14 @@ function Proxy.equivalents (proxy, options)
   assert (getmetatable (proxy) == Proxy)
   assert (options == nil or type (options) == "table")
   options = options or {}
+  local seen      = {}
   local coroutine = Coromake ()
   local function iterate (where, current)
+    if seen [current] and seen [current] [where] then
+      return nil
+    end
+    seen [current] = seen [current] or {}
+    seen [current] [where] = true
     local raw  = Proxy.rawget (where)
     local keys = current.__keys
     if (options.all or raw ~= nil) and current == where then
@@ -794,24 +813,22 @@ function Proxy.__pairs (proxy)
   end
   return coroutine.wrap (function ()
     local cached = {}
-    for p, current in Proxy.equivalents (proxy) do
+    for _, current in Proxy.equivalents (proxy) do
       while getmetatable (current) == Reference do
         current = Reference.resolve (current, proxy)
       end
+      local iter
       if getmetatable (current) == Proxy then
-        for k in Proxy.__pairs (current) do
+        iter = Proxy.__pairs
+      elseif type (current) == "table" then
+        iter = pairs
+      end
+      if iter then
+        for k in iter (current) do
           if  cached [k] == nil and current [k] ~= nil
           and getmetatable (k) ~= Layer.Key then
-            cached [k] = current [k]
-            coroutine.yield (k, current [k])
-          end
-        end
-      elseif type (current) == "table" then
-        for k in pairs (current) do
-          if  cached [k] == nil and p [k] ~= nil
-          and getmetatable (k) ~= Layer.Key then
-            cached [k] = p [k]
-            coroutine.yield (k, cached [k])
+            cached [k] = proxy [k]
+            coroutine.yield (k, proxy [k])
           end
         end
       end
