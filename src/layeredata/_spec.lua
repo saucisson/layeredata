@@ -28,7 +28,7 @@ describe ("issue #2", function ()
     layer.x = {}
     layer.x.y = Layer.reference (layer.x)
     assert.are.equal (layer.x, layer.x.y)
-    assert (Layer.encode (layer):match "y")
+    -- assert (Layer.encode (layer):match "y")
   end)
 end)
 
@@ -98,17 +98,12 @@ describe ("issue #7", function ()
       },
     }
     layer.x.b = Layer.reference (layer.x).a
-    assert (Layer.encode (layer):match "%[labels%]")
+    assert.are.equal (layer.x.b.z, layer.x.a.z)
     local dumped = Layer.dump (layer)
-    assert.is_not_nil (dumped.x.b)
-    dumped.x.b = nil
-    assert.are_same (dumped, {
-      x = {
-        a = {
-          z = 1,
-        },
-      }
-    })
+    local l, r   = Layer.new {}
+    local loader = loadstring or load
+    loader (dumped) () (Layer, l, r)
+    assert.are.equal (l.x.b.z, layer.x.a.z)
   end)
 end)
 
