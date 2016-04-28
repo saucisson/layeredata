@@ -21,6 +21,26 @@ local assert = require "luassert"
 --   end)
 -- end)
 
+describe ("simple test", function ()
+  it ("is correct", function ()
+    local Layer = require "layeredata"
+    local l1 = Layer.new { name = "layer-1" }
+    local l2 = Layer.new { name = "layer-2" }
+    l1.a = {
+      b = {
+        c = 1,
+      }
+    }
+    l2.a = {
+      b = {
+        d = 1,
+      }
+    }
+    l1 [Layer.key.refines] = { l2 }
+    assert.are.equal (l1.a.b.d, l2.a.b.d)
+  end)
+end)
+
 describe ("issue #2", function ()
   it ("is fixed", function ()
     local Layer  = require "layeredata"
@@ -109,14 +129,14 @@ end)
 
 describe ("issue #8", function ()
   it ("is fixed", function ()
-    local Layer   = require "layeredata"
-    local refines = Layer.key.refines
-    local layer   = Layer.new { name = "mylayer" }
+    local Layer      = require "layeredata"
+    local refines    = Layer.key.refines
+    local layer, ref = Layer.new { name = "mylayer" }
     layer.root = {
       x = { 1 }
     }
     layer.root.a = {
-      [refines] = { Layer.reference (layer).root },
+      [refines] = { ref.root },
     }
     if #setmetatable ({}, { __len = function () return 1 end }) ~= 1 then
       assert.are.equal (Layer.len (layer.root.a.x), 1)
@@ -126,7 +146,7 @@ describe ("issue #8", function ()
   end)
 end)
 
-describe ("issue #9", function ()
+describe ("issue #9 #current", function ()
   it ("is fixed", function ()
     local Layer    = require "layeredata"
     local checks   = Layer.key.checks
