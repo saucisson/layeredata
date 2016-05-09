@@ -17,6 +17,8 @@ observed through several layers.
 }
 
 dependencies = {
+  "lua >= 5.1",
+  "c3",
   "coronest",
   "uuid",
 }
