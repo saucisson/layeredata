@@ -53,8 +53,8 @@ Layer.key = setmetatable ({
 }, Read_Only)
 
 Layer.tag = setmetatable ({
-  null      = {},
-  computing = {},
+  null      = setmetatable ({ name = "null"      }, Key),
+  computing = setmetatable ({ name = "computing" }, Key),
 }, Read_Only)
 
 Layer.coroutine  = Coromake ()
@@ -98,24 +98,15 @@ end
 
 function Layer.clear ()
   Layer.caches = {
-    index   = setmetatable ({}, IgnoreKeys),
-    pairs   = setmetatable ({}, IgnoreNone),
-    ipairs  = setmetatable ({}, IgnoreKeys),
-    len     = setmetatable ({}, IgnoreKeys),
-    check   = setmetatable ({}, IgnoreKeys),
-    labels  = setmetatable ({}, IgnoreKeys),
-    exists  = setmetatable ({}, IgnoreKeys),
-    refines = {
-      exists = {
-        [true ] = setmetatable ({}, IgnoreKeys),
-        [false] = setmetatable ({}, IgnoreKeys),
-      },
-    },
-    equivalents = {
-      exists = setmetatable ({}, IgnoreKeys),
-      all    = setmetatable ({}, IgnoreKeys),
-      none   = setmetatable ({}, IgnoreKeys),
-    },
+    index       = setmetatable ({}, IgnoreKeys),
+    pairs       = setmetatable ({}, IgnoreNone),
+    ipairs      = setmetatable ({}, IgnoreKeys),
+    len         = setmetatable ({}, IgnoreKeys),
+    check       = setmetatable ({}, IgnoreKeys),
+    labels      = setmetatable ({}, IgnoreKeys),
+    exists      = setmetatable ({}, IgnoreKeys),
+    dependencies = setmetatable ({}, IgnoreKeys),
+    refines     = setmetatable ({}, IgnoreKeys),
   }
 end
 
@@ -368,7 +359,7 @@ function Proxy.check (proxy)
   if not checks then
     return
   end
-  local messages = Proxy.raw (Proxy.child (proxy, Layer.key.messages)) or {}
+  local messages = proxy [Layer.key.messages] or {}
   for _, f in Proxy.__pairs (checks) do
     assert (type (f) == "function")
     local co = Layer.coroutine.wrap (function ()
@@ -387,38 +378,62 @@ end
 
 function Proxy.__index (proxy, key)
   assert (getmetatable (proxy) == Proxy)
-  proxy = Proxy.child (proxy, key)
+  local child  = Proxy.child (proxy, key)
   local cache  = Layer.caches.index
-  local cached = cache [proxy]
+  local cached = cache [child]
   if cached == Layer.tag.null
   or cached == Layer.tag.computing then
     return nil
   elseif cached ~= nil then
     return cached
   end
-  cache [proxy] = Layer.tag.computing
-  local result
-  if Proxy.exists (proxy) then
-    local _, value = Proxy.equivalents (proxy) ()
-    if getmetatable (value) == Reference then
-      result = Reference.resolve (value, proxy)
-    elseif getmetatable (value) == Proxy then
-      result = value
-    elseif type (value) == "table" then
-      result = proxy
-    else
-      result = value
+  local hidden       = Layer.hidden [proxy]
+  local has_messages = key == Layer.key.messages
+  for _, k in ipairs (hidden.keys) do
+    has_messages = has_messages
+                or k == Layer.key.messages
+  end
+  if has_messages then
+    local value = Proxy.raw (child)
+    if value then
+      if getmetatable (value) == Reference
+      or getmetatable (value) == Proxy then
+        return value
+      elseif type (value) == "table" then
+        return child
+      else
+        return value
+      end
     end
-  end
-  if result == nil then
-    cache [proxy] = Layer.tag.null
   else
-    cache [proxy] = result
+    cache [child] = Layer.tag.computing
+    local result
+    if Proxy.exists (child) then
+      for _, value in Proxy.dependencies (child) do
+        if value then
+          if getmetatable (value) == Reference then
+            result = Reference.resolve (value, child)
+          elseif getmetatable (value) == Proxy then
+            result = value
+          elseif type (value) == "table" then
+            result = child
+          else
+            result = value
+          end
+          break
+        end
+      end
+    end
+    if result == nil then
+      cache [child] = Layer.tag.null
+    else
+      cache [child] = result
+    end
+    if getmetatable (result) == Proxy then
+      Proxy.check (result)
+    end
+    return result
   end
-  if getmetatable (result) == Proxy then
-    Proxy.check (result)
-  end
-  return result
 end
 
 function Proxy.raw (proxy)
@@ -481,15 +496,15 @@ function Proxy.replacewith (proxy, value)
   end
 end
 
-function Proxy.has_meta (proxy)
+function Proxy.keys (proxy)
   assert (getmetatable (proxy) == Proxy)
-  local hidden = Layer.hidden [proxy]
-  for _, key in ipairs (hidden.keys) do
-    if key == Layer.key.meta then
-      return true
+  local hidden    = Layer.hidden [proxy]
+  local coroutine = Coromake ()
+  return coroutine.wrap (function ()
+    for i, key in ipairs (hidden.keys) do
+      coroutine.yield (i, key)
     end
-  end
-  return false
+  end)
 end
 
 function Proxy.exists (proxy)
@@ -498,9 +513,21 @@ function Proxy.exists (proxy)
   if cache [proxy] ~= nil then
     return cache [proxy]
   end
-  local result = Proxy.equivalents (proxy, {
-    exists = true,
-  }) () ~= nil
+  local result = false
+  local hidden = Layer.hidden [proxy]
+  if hidden.parent then
+    for _, raw in Proxy.dependencies (hidden.parent) do
+      if type (raw) == "table"
+      and getmetatable (raw) ~= Proxy
+      and getmetatable (raw) ~= Reference
+      and raw [hidden.keys [#hidden.keys]] then
+        result = true
+        break
+      end
+    end
+  else
+    result = Proxy.raw (proxy) ~= nil
+  end
   cache [proxy] = result
   return result
 end
@@ -512,115 +539,120 @@ local function reverse (t)
   return t
 end
 
-function Proxy.refines (proxy, options)
+function Proxy.dependencies (proxy)
   assert (getmetatable (proxy) == Proxy)
-  options = options or {}
-  local cache = Layer.caches.refines.exists [options.exists or false]
-  local found = cache [proxy]
-  if found then
-    return found
-  end
-  local seen    = {}
-  local result  = {}
-  cache [proxy] = result
-  local hidden  = Layer.hidden [proxy]
-  local raw     = Proxy.raw (proxy)
-  -- when within a messages/defaults/refines, do not look into parents
-  for _, key in ipairs (hidden.keys) do
-    if key == Layer.key.messages
-    or key == Layer.key.defaults
-    or key == Layer.key.refines then
-      return {}
-    end
-  end
-  -- extract the raw refines
-  if type (raw) == "table" then
-    local refines = raw [Layer.key.refines] or {}
-    for j = #refines, 1, -1 do
-      local x = refines [j]
-      if not seen [x] then
-        result [#result+1] = x
-        seen [x] = true
-      end
-    end
-  end
-  -- extract the raw defaults
-  if  not options.exists
-  and getmetatable (hidden.keys [#hidden.keys]) ~= Key
-  and Proxy.exists (proxy) then
-    local parent   = hidden.parent and Proxy.raw (hidden.parent)
-    local defaults = parent and parent [Layer.key.defaults] or {}
-    for j = #defaults, 1, -1 do
-      local x = defaults [j]
-      if not seen [x] then
-        result [#result+1] = x
-        seen [x] = true
-      end
-    end
-  end
-  -- iterate over parent
-  local parent = hidden.parent
-  while parent do
-    local parent_hidden = Layer.hidden [parent]
-    for x in Proxy.equivalents (parent) do
-      for j = #parent_hidden.keys+1, #hidden.keys do
-        x = Proxy.child (x, hidden.keys [j])
-      end
-      if x ~= proxy and not seen [x] then
-        result [#result+1] = x
-        seen [x] = true
-      end
-    end
-    parent = parent_hidden.parent
-  end
-  reverse (result)
-  cache [proxy] = result
-  return result
-end
-
-function Proxy.equivalents (proxy, options)
-  assert (getmetatable (proxy) == Proxy)
-  assert (options == nil or type (options) == "table")
-  options = options or {}
-  local cache = Layer.caches.equivalents
-  if options.exists then
-    cache = cache.exists
-  elseif options.all then
-    cache = cache.all
-  else
-    cache = cache.none
-  end
+  local cache  = Layer.caches.dependencies
   local result = cache [proxy]
-  if not result then
-    cache [proxy] = result
-    local c3 = C3.new {
-      superclass = function (x)
-        while x and getmetatable (x) == Reference do
-          x = Reference.resolve (x, proxy)
-        end
-        return x and Proxy.refines (x, {
-          exists = options.exists
-               and #Layer.hidden [x].keys == #Layer.hidden [proxy].keys,
-        }) or {}
-      end,
-    }
-    local refines = c3 (proxy)
-    reverse (refines)
-    result = {}
-    for _, x in ipairs (refines) do
-      while x and getmetatable (x) == Reference do
-        x = Reference.resolve (x, proxy)
+  local dependencies_cache = setmetatable ({}, IgnoreKeys)
+  local refines_cache     = setmetatable ({}, IgnoreKeys)
+  if not result and Proxy.exists (proxy) then
+    local refines, dependencies
+
+    dependencies = function (x)
+      assert (getmetatable (x) == Proxy)
+      local found = dependencies_cache [x]
+      if found ~= nil then
+        return found or nil
       end
-      result [#result+1] = x
+      dependencies_cache [x] = false
+      local c3 = C3.new {
+        superclass = function (p)
+          return refines (p) or {}
+        end,
+      }
+      local all = c3 (x)
+      reverse (all)
+      -- print ("equiv", x)
+      -- for i, y in ipairs (all or {}) do
+      --   print ("  ", i, y)
+      -- end
+      dependencies_cache [x] = all
+      return all
     end
+
+    refines = function (x)
+      assert (getmetatable (x) == Proxy)
+      local found = refines_cache [x]
+      if found ~= nil then
+        return found or nil
+      end
+      refines_cache [x] = false
+      local hidden      = Layer.hidden [x]
+      local refinments  = {
+        current  = nil,
+        refines  = {},
+        parents  = {},
+        defaults = {},
+      }
+      do
+        local raw = Proxy.raw (x)
+        if raw then
+          refinments.current = x
+        end
+      end
+      local continue = true
+      local in_meta  = false
+      for _, key in ipairs (hidden.keys) do
+        if key == Layer.key.defaults
+        or key == Layer.key.messages
+        or key == Layer.key.refines then
+          continue = false
+        elseif key == Layer.key.meta then
+          in_meta = true
+        end
+      end
+      if continue and x [Layer.key.refines] then
+        for i, refine in Layer.ipairs (x [Layer.key.refines]) do
+          refinments.refines [i] = refine
+        end
+      end
+      if continue and hidden.parent then
+        local key = hidden.keys [#hidden.keys]
+        for _, parent in ipairs (dependencies (hidden.parent) or {}) do
+          if  parent ~= hidden.parent
+          and Proxy.raw (parent)
+          and Proxy.raw (parent) [key] then
+            refinments.parents [#refinments.parents+1] = Proxy.child (parent, key)
+          end
+          if not in_meta and parent [Layer.key.defaults] then
+            for _, default in Layer.ipairs (parent [Layer.key.defaults]) do
+              refinments.defaults [#refinments.defaults+1] = default
+            end
+          end
+        end
+      end
+      local seen = {}
+      local all  = {}
+      all [#all+1] = refinments.current
+      for _, container in ipairs {
+        refinments.refines,
+        refinments.defaults,
+        refinments.parents,
+      } do
+        for _, refine in ipairs (container) do
+          if not seen [refine] then
+            while refine and getmetatable (refine) == Reference do
+              refine = Reference.resolve (refine, proxy)
+            end
+            all [#all+1] = refine
+          end
+        end
+      end
+      reverse (all)
+      -- print ("refines", x)
+      -- for i, y in ipairs (all or {}) do
+      --   print ("  ", i, y)
+      -- end
+      refines_cache [proxy] = all
+      return all
+    end
+
+    result = dependencies (proxy)
     cache [proxy] = result
   end
   return coroutine.wrap (function ()
     for _, x in ipairs (result) do
-      local raw = Proxy.raw (x)
-      if options.all or raw ~= nil then
-        coroutine.yield (x, raw)
-      end
+      coroutine.yield (x, Proxy.raw (x))
     end
   end)
 end
@@ -628,7 +660,7 @@ end
 function Proxy.__lt (lhs, rhs)
   assert (getmetatable (lhs) == Proxy)
   assert (getmetatable (rhs) == Proxy)
-  for p in Proxy.equivalents (rhs, { all = true }) do
+  for p in Proxy.dependencies (rhs, { all = true }) do
     if getmetatable (p) == Proxy and p == lhs then
       return true
     end
@@ -652,7 +684,9 @@ function Proxy.project (proxy, what)
   local rhs_layer = Layer.hidden [rhs_proxy.layer]
   local result    = rhs_layer.proxy
   for _, key in ipairs (lhs_proxy.keys) do
-    result = Proxy.child (result, key)
+    result = type (result) == "table"
+         and result [key]
+          or nil
   end
   return result
 end
@@ -670,7 +704,7 @@ function Proxy.__len (proxy)
     return cache [proxy]
   end
   for i = 1, math.huge do
-    if not Proxy.exists (Proxy.child (proxy, i)) then
+    if proxy [i] == nil then
       cache [proxy] = i-1
       return i-1
     end
@@ -688,18 +722,20 @@ function Proxy.__ipairs (proxy)
     end)
   end
   local coroutine = Coromake ()
+  local cached = {}
+  for i = 1, math.huge do
+    local result = proxy [i]
+    if result == nil then
+      break
+    end
+    result = proxy [i]
+    cached [i] = result
+  end
+  cache [proxy] = cached
   return coroutine.wrap (function ()
-    local cached = {}
-    for i = 1, math.huge do
-      local result = Proxy.equivalents (Proxy.child (proxy, i)) ()
-      if result == nil then
-        break
-      end
-      result = proxy [i]
-      cached [i] = result
+    for i, result in ipairs (cache [proxy]) do
       coroutine.yield (i, result)
     end
-    cache [proxy] = cached
   end)
 end
 
@@ -717,7 +753,7 @@ function Proxy.__pairs (proxy)
   end
   cache [proxy] = Layer.tag.null
   local result = {}
-  for _, current in Proxy.equivalents (proxy) do
+  for _, current in Proxy.dependencies (proxy) do
     while getmetatable (current) == Reference do
       current = Reference.resolve (current, proxy)
     end
@@ -759,7 +795,10 @@ function Reference.new (target)
     return result
   elseif getmetatable (target) == Proxy then
     local label = Uuid ()
-    Proxy.child (target, Layer.key.labels) [label] = true
+    if not target [Layer.key.labels] then
+      target [Layer.key.labels] = {}
+    end
+    target [Layer.key.labels] [label] = true
     local result = setmetatable ({}, Reference)
     Layer.hidden [result] = {
       from = label,
@@ -824,10 +863,9 @@ function Reference.resolve (reference, proxy)
   local current = proxy
   do
     while current do
-      local labels = current
-      labels = Proxy.child (labels, Layer.key.labels)
-      labels = Proxy.child (labels, ref_hidden.from)
-      if Proxy.equivalents (labels) () then
+      if  current
+      and current [Layer.key.labels]
+      and current [Layer.key.labels] [ref_hidden.from] then
         break
       end
       current = Layer.hidden [current].parent
