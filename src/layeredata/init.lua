@@ -521,7 +521,13 @@ function Proxy.exists (proxy)
       and getmetatable (raw) ~= Proxy
       and getmetatable (raw) ~= Reference
       and raw [hidden.keys [#hidden.keys]] then
-        result = true
+        local value = raw [hidden.keys [#hidden.keys]]
+        if  getmetatable (value) == Reference
+        and Reference.resolve (value, proxy) ~= nil then
+          result = true
+        elseif getmetatable (value) ~= Reference then
+          result = true
+        end
         break
       end
     end
@@ -546,6 +552,7 @@ function Proxy.dependencies (proxy)
   local dependencies_cache = setmetatable ({}, IgnoreKeys)
   local refines_cache     = setmetatable ({}, IgnoreKeys)
   if not result and Proxy.exists (proxy) then
+    local seen = {}
     local refines, dependencies
 
     dependencies = function (x)
@@ -557,21 +564,17 @@ function Proxy.dependencies (proxy)
       dependencies_cache [x] = false
       local c3 = C3.new {
         superclass = function (p)
-          return refines (p) or {}
+          return p and refines (p) or {}
         end,
       }
       local all = c3 (x)
       reverse (all)
-      -- print ("equiv", x)
-      -- for i, y in ipairs (all or {}) do
-      --   print ("  ", i, y)
-      -- end
       dependencies_cache [x] = all
       return all
     end
 
     refines = function (x)
-      assert (getmetatable (x) == Proxy)
+      assert (getmetatable (x) == Proxy, debug.traceback ())
       local found = refines_cache [x]
       if found ~= nil then
         return found or nil
@@ -579,26 +582,20 @@ function Proxy.dependencies (proxy)
       refines_cache [x] = false
       local hidden      = Layer.hidden [x]
       local refinments  = {
-        current  = nil,
         refines  = {},
         parents  = {},
         defaults = {},
       }
-      do
-        local raw = Proxy.raw (x)
-        if raw then
-          refinments.current = x
-        end
-      end
-      local continue = true
-      local in_meta  = false
+      local continue   = true
+      local in_special = false
       for _, key in ipairs (hidden.keys) do
         if key == Layer.key.defaults
         or key == Layer.key.messages
         or key == Layer.key.refines then
           continue = false
-        elseif key == Layer.key.meta then
-          in_meta = true
+        end
+        if getmetatable (key) == Key then
+          in_special = true
         end
       end
       if continue and x [Layer.key.refines] then
@@ -614,40 +611,37 @@ function Proxy.dependencies (proxy)
           and Proxy.raw (parent) [key] then
             refinments.parents [#refinments.parents+1] = Proxy.child (parent, key)
           end
-          if not in_meta and parent [Layer.key.defaults] then
-            for _, default in Layer.ipairs (parent [Layer.key.defaults]) do
+          if not in_special and parent [Layer.key.defaults] then
+            for _, default in ipairs (Proxy.raw (parent [Layer.key.defaults])) do
               refinments.defaults [#refinments.defaults+1] = default
             end
           end
         end
       end
-      local seen = {}
-      local all  = {}
-      all [#all+1] = refinments.current
+      local all = {}
       for _, container in ipairs {
         refinments.refines,
         refinments.defaults,
         refinments.parents,
       } do
         for _, refine in ipairs (container) do
-          if not seen [refine] then
-            while refine and getmetatable (refine) == Reference do
-              refine = Reference.resolve (refine, proxy)
-            end
+          while refine and getmetatable (refine) == Reference do
+            refine = Reference.resolve (refine, proxy)
+          end
+          if getmetatable (refine) == Proxy and not seen [refine] then
             all [#all+1] = refine
           end
         end
       end
       reverse (all)
-      -- print ("refines", x)
-      -- for i, y in ipairs (all or {}) do
-      --   print ("  ", i, y)
-      -- end
       refines_cache [proxy] = all
       return all
     end
 
     result = dependencies (proxy)
+    cache [proxy] = result
+  elseif not result then
+    result = {}
     cache [proxy] = result
   end
   return coroutine.wrap (function ()
@@ -860,7 +854,7 @@ function Reference.resolve (reference, proxy)
     return cached
   end
   local ref_hidden = Layer.hidden [reference]
-  local current = proxy
+  local current    = proxy
   do
     while current do
       if  current
