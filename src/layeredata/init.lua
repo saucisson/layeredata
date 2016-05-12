@@ -625,7 +625,8 @@ function Proxy.dependencies (proxy)
             refine = Reference.resolve (refine, hidden.parent)
           end
           if getmetatable (refine) == Proxy and not seen [refine] then
-            all [#all+1] = refine
+            all  [#all+1] = refine
+            seen [refine] = true
           end
         end
       end
