@@ -97,16 +97,17 @@ function Layer.require (name)
 end
 
 function Layer.clear ()
+  local Metatable = IgnoreNone
   Layer.caches = {
-    index       = setmetatable ({}, IgnoreKeys),
-    pairs       = setmetatable ({}, IgnoreNone),
-    ipairs      = setmetatable ({}, IgnoreKeys),
-    len         = setmetatable ({}, IgnoreKeys),
-    check       = setmetatable ({}, IgnoreKeys),
-    labels      = setmetatable ({}, IgnoreKeys),
-    exists      = setmetatable ({}, IgnoreKeys),
-    dependencies = setmetatable ({}, IgnoreKeys),
-    refines     = setmetatable ({}, IgnoreKeys),
+    index        = setmetatable ({}, Metatable),
+    pairs        = setmetatable ({}, Metatable),
+    ipairs       = setmetatable ({}, Metatable),
+    len          = setmetatable ({}, Metatable),
+    check        = setmetatable ({}, Metatable),
+    labels       = setmetatable ({}, Metatable),
+    exists       = setmetatable ({}, Metatable),
+    dependencies = setmetatable ({}, Metatable),
+    refines      = setmetatable ({}, Metatable),
   }
 end
 
@@ -586,18 +587,15 @@ function Proxy.dependencies (proxy)
         parents  = {},
         defaults = {},
       }
-      local continue   = true
-      local in_special = false
+      local continue = true
       for _, key in ipairs (hidden.keys) do
         if key == Layer.key.defaults
         or key == Layer.key.messages
         or key == Layer.key.refines then
           continue = false
         end
-        if getmetatable (key) == Key then
-          in_special = true
-        end
       end
+      local in_special = getmetatable (hidden.keys [#hidden.keys]) == Key
       if continue and x [Layer.key.refines] then
         for i, refine in Layer.ipairs (x [Layer.key.refines]) do
           refinments.refines [i] = refine
@@ -606,9 +604,7 @@ function Proxy.dependencies (proxy)
       if continue and hidden.parent then
         local key = hidden.keys [#hidden.keys]
         for _, parent in ipairs (dependencies (hidden.parent) or {}) do
-          if  parent ~= hidden.parent
-          and Proxy.raw (parent)
-          and Proxy.raw (parent) [key] then
+          if parent ~= hidden.parent then
             refinments.parents [#refinments.parents+1] = Proxy.child (parent, key)
           end
           if not in_special and parent [Layer.key.defaults] then
@@ -626,7 +622,7 @@ function Proxy.dependencies (proxy)
       } do
         for _, refine in ipairs (container) do
           while refine and getmetatable (refine) == Reference do
-            refine = Reference.resolve (refine, proxy)
+            refine = Reference.resolve (refine, hidden.parent)
           end
           if getmetatable (refine) == Proxy and not seen [refine] then
             all [#all+1] = refine
@@ -853,6 +849,7 @@ function Reference.resolve (reference, proxy)
   elseif cached then
     return cached
   end
+  cache [proxy] = cache [proxy] or setmetatable ({}, IgnoreNone)
   local ref_hidden = Layer.hidden [reference]
   local current    = proxy
   do
@@ -865,7 +862,6 @@ function Reference.resolve (reference, proxy)
       current = Layer.hidden [current].parent
     end
     if not current then
-      cache [proxy] = cache [proxy] or setmetatable ({}, IgnoreAll)
       cache [proxy] [reference] = Layer.tag.null
       return nil
     end
@@ -875,13 +871,11 @@ function Reference.resolve (reference, proxy)
       current = Reference.resolve (current, proxy)
     end
     if getmetatable (current) ~= Proxy then
-      cache [proxy] = cache [proxy] or setmetatable ({}, IgnoreAll)
       cache [proxy] [reference] = Layer.tag.null
       return nil
     end
     current = current [key]
   end
-  cache [proxy] = cache [proxy] or setmetatable ({}, IgnoreAll)
   cache [proxy] [reference] = current
   return current
 end
