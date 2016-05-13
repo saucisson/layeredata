@@ -553,8 +553,12 @@ function Proxy.dependencies (proxy)
   local dependencies_cache = setmetatable ({}, IgnoreKeys)
   local refines_cache     = setmetatable ({}, IgnoreKeys)
   if not result and Proxy.exists (proxy) then
-    local seen = {}
     local refines, dependencies
+    local c3 = C3.new {
+      superclass = function (p)
+        return p and refines (p) or {}
+      end,
+    }
 
     dependencies = function (x)
       assert (getmetatable (x) == Proxy)
@@ -563,11 +567,6 @@ function Proxy.dependencies (proxy)
         return found or nil
       end
       dependencies_cache [x] = false
-      local c3 = C3.new {
-        superclass = function (p)
-          return p and refines (p) or {}
-        end,
-      }
       local all = c3 (x)
       reverse (all)
       dependencies_cache [x] = all
@@ -582,52 +581,67 @@ function Proxy.dependencies (proxy)
       end
       refines_cache [x] = false
       local hidden      = Layer.hidden [x]
+      local all         = {}
       local refinments  = {
         refines  = {},
         parents  = {},
         defaults = {},
       }
-      local continue = true
       for _, key in ipairs (hidden.keys) do
         if key == Layer.key.defaults
         or key == Layer.key.messages
         or key == Layer.key.refines then
-          continue = false
+          refines_cache [proxy] = all
+          return all
         end
       end
+      local exists     = Proxy.exists (x)
       local in_special = getmetatable (hidden.keys [#hidden.keys]) == Key
-      if continue and x [Layer.key.refines] then
+      if x [Layer.key.refines] then
         for i, refine in Layer.ipairs (x [Layer.key.refines]) do
           refinments.refines [i] = refine
         end
       end
-      if continue and hidden.parent then
+      if hidden.parent then
         local key = hidden.keys [#hidden.keys]
-        for _, parent in ipairs (dependencies (hidden.parent) or {}) do
+        local parents = {}
+        for parent in Proxy.dependencies (hidden.parent) do
+          parents [#parents+1] = parent
+        end
+        reverse (parents)
+        for _, parent in ipairs (parents) do
           if parent ~= hidden.parent then
             refinments.parents [#refinments.parents+1] = Proxy.child (parent, key)
           end
-          if not in_special and parent [Layer.key.defaults] then
+          if not in_special and exists and parent [Layer.key.defaults] then
             for _, default in ipairs (Proxy.raw (parent [Layer.key.defaults])) do
               refinments.defaults [#refinments.defaults+1] = default
             end
           end
         end
       end
-      local all = {}
+      local parent    = Layer.hidden [proxy].parent
+      local flattened = {}
+      local seen      = {}
       for _, container in ipairs {
-        refinments.refines,
-        refinments.defaults,
         refinments.parents,
+        refinments.defaults,
+        refinments.refines,
       } do
         for _, refine in ipairs (container) do
           while refine and getmetatable (refine) == Reference do
-            refine = Reference.resolve (refine, hidden.parent)
+            refine = Reference.resolve (refine, parent)
           end
-          if getmetatable (refine) == Proxy and not seen [refine] then
-            all  [#all+1] = refine
-            seen [refine] = true
+          if getmetatable (refine) == Proxy then
+            flattened [#flattened+1] = refine
           end
+        end
+      end
+      for i = #flattened, 1, -1 do
+        local element = flattened [i]
+        if not seen [element] then
+          seen [element] = true
+          all  [#all+1 ] = element
         end
       end
       reverse (all)
