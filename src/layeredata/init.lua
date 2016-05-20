@@ -390,6 +390,22 @@ function Proxy.check (proxy)
   end
 end
 
+function Proxy.check_all (proxy)
+  assert (getmetatable (proxy) == Proxy)
+  local seen = {}
+  local function iterate (x)
+    assert (getmetatable (x) == Proxy)
+    seen [x] = true
+    Proxy.check (x)
+    for _, child in pairs (x) do
+      if getmetatable (child) == Proxy and not seen [child] then
+        iterate (child)
+      end
+    end
+  end
+  iterate (proxy)
+end
+
 function Proxy.__index (proxy, key)
   assert (getmetatable (proxy) == Proxy)
   local child  = Proxy.child (proxy, key)
@@ -424,7 +440,7 @@ function Proxy.__index (proxy, key)
   else
     Layer.caches.index [child] = result
   end
-  if getmetatable (result) == Proxy then
+  if Layer.check and getmetatable (result) == Proxy then
     Proxy.check (result)
   end
   return result
@@ -466,7 +482,9 @@ function Proxy.__newindex (proxy, key, value)
   end
   current [key] = value
   Layer.clear ()
-  Proxy.check (proxy)
+  if Layer.check then
+    Proxy.check (proxy)
+  end
   for observer in pairs (layer.observers) do
     observer (proxy, key, value)
   end
