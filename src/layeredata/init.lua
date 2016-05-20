@@ -47,7 +47,6 @@ Layer.key = setmetatable ({
   checks   = setmetatable ({ name = "checks"   }, Key),
   defaults = setmetatable ({ name = "defaults" }, Key),
   labels   = setmetatable ({ name = "labels"   }, Key),
-  messages = setmetatable ({ name = "messages" }, Key),
   meta     = setmetatable ({ name = "meta"     }, Key),
   refines  = setmetatable ({ name = "refines"  }, Key),
 }, Read_Only)
@@ -117,6 +116,7 @@ function Layer.clear ()
     exists       = setmetatable ({}, Metatable),
     dependencies = setmetatable ({}, Metatable),
   }
+  Layer.messages = setmetatable ({}, IgnoreKeys)
 end
 
 function Layer.dump (layer)
@@ -243,7 +243,6 @@ function Layer.merge (source, target)
       if k == Layer.key.checks
       or k == Layer.key.defaults
       or k == Layer.key.labels
-      or k == Layer.key.messages
       or k == Layer.key.refines then
         t [k] = {}
         for kk, vv in pairs (v) do
@@ -325,6 +324,11 @@ function Proxy.__tostring (proxy)
   return table.concat (result, " ")
 end
 
+function Proxy.messages (proxy)
+  assert (getmetatable (proxy) == Proxy)
+  return Layer.messages [proxy]
+end
+
 function Proxy.child (proxy, key)
   assert (getmetatable (proxy) == Proxy)
   assert (key ~= nil)
@@ -368,7 +372,7 @@ function Proxy.check (proxy)
   if not checks then
     return
   end
-  local messages = proxy [Layer.key.messages] or {}
+  local messages = Layer.messages [proxy] or {}
   for _, f in Proxy.__pairs (checks) do
     assert (type (f) == "function")
     local co = Layer.coroutine.wrap (function ()
@@ -379,9 +383,9 @@ function Proxy.check (proxy)
     end
   end
   if next (messages) then
-    proxy [Layer.key.messages] = messages
+    Layer.messages [proxy] = messages
   else
-    proxy [Layer.key.messages] = nil
+    Layer.messages [proxy] = nil
   end
 end
 
@@ -395,54 +399,34 @@ function Proxy.__index (proxy, key)
   elseif cached ~= nil then
     return cached
   end
-  local hidden       = Layer.hidden [proxy]
-  local has_messages = key == Layer.key.messages
-  for _, k in ipairs (hidden.keys) do
-    has_messages = has_messages
-                or k == Layer.key.messages
-  end
-  if has_messages then
-    local value = Proxy.raw (child)
-    if value then
-      if getmetatable (value) == Reference
-      or getmetatable (value) == Proxy then
-        return value
-      elseif type (value) == "table" then
-        return child
-      else
-        return value
-      end
-    end
-  else
-    local result
-    Layer.statistics.index [child] = (Layer.statistics.index [child] or 0) + 1
-    Layer.caches    .index [child] = Layer.tag.computing
-    if Proxy.exists (child) then
-      for _, value in Proxy.dependencies (child) do
-        if value then
-          if getmetatable (value) == Reference then
-            result = Reference.resolve (value, child)
-          elseif getmetatable (value) == Proxy then
-            result = value
-          elseif type (value) == "table" then
-            result = child
-          else
-            result = value
-          end
-          break
+  local result
+  Layer.statistics.index [child] = (Layer.statistics.index [child] or 0) + 1
+  Layer.caches    .index [child] = Layer.tag.computing
+  if Proxy.exists (child) then
+    for _, value in Proxy.dependencies (child) do
+      if value then
+        if getmetatable (value) == Reference then
+          result = Reference.resolve (value, child)
+        elseif getmetatable (value) == Proxy then
+          result = value
+        elseif type (value) == "table" then
+          result = child
+        else
+          result = value
         end
+        break
       end
     end
-    if result == nil then
-      Layer.caches.index [child] = Layer.tag.null
-    else
-      Layer.caches.index [child] = result
-    end
-    if getmetatable (result) == Proxy then
-      Proxy.check (result)
-    end
-    return result
   end
+  if result == nil then
+    Layer.caches.index [child] = Layer.tag.null
+  else
+    Layer.caches.index [child] = result
+  end
+  if getmetatable (result) == Proxy then
+    Proxy.check (result)
+  end
+  return result
 end
 
 function Proxy.raw (proxy)
@@ -473,20 +457,15 @@ function Proxy.__newindex (proxy, key, value)
   local layer   = Layer.hidden [hidden.layer]
   local current = layer.data
   local keys    = hidden.keys
-  local has_messages = key == Layer.key.messages
   for _, k in ipairs (keys) do
-    if k == Layer.key.messages then
-      has_messages = true
-    end
     if current [k] == nil then
       current [k] = {}
     end
     current = current [k]
   end
   current [key] = value
-  if not has_messages then
-    Layer.clear (proxy)
-  end
+  Layer.clear ()
+  Proxy.check (proxy)
   for observer in pairs (layer.observers) do
     observer (proxy, key, value)
   end
@@ -600,7 +579,6 @@ function Proxy.dependencies (proxy)
         }
         for _, key in ipairs (hidden.keys) do
           if key == Layer.key.defaults
-          or key == Layer.key.messages
           or key == Layer.key.refines then
             refines_cache [proxy] = all
             return all
