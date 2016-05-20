@@ -622,7 +622,9 @@ function Proxy.dependencies (proxy)
       end
       local parent    = Layer.hidden [proxy].parent
       local flattened = {}
-      local seen      = {}
+      local seen      = {
+        [x] = true,
+      }
       for _, container in ipairs {
         refinments.parents,
         refinments.refines,
