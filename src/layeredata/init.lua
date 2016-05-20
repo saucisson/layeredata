@@ -760,7 +760,8 @@ function Proxy.__pairs (proxy)
     end
     if iter then
       for k in iter (current) do
-        if  result [k] == nil and current [k] ~= nil
+        if  result [k] == nil
+        and current [k] ~= nil
         and getmetatable (k) ~= Layer.Key then
           result [k] = proxy [k]
         end
