@@ -25,8 +25,8 @@ local IgnoreValues = { __mode = "v"  }
 --local IgnoreAll    = { __mode = "kv" }
 
 local Read_Only = {
-  __index    = assert,
-  __newindex = assert,
+  __index    = function () assert (false) end,
+  __newindex = function () assert (false) end,
 }
 
 local Cache = {
