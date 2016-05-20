@@ -516,9 +516,8 @@ end
 
 function Proxy.exists (proxy)
   assert (getmetatable (proxy) == Proxy)
-  local cache = Layer.caches.exists
-  if cache [proxy] ~= nil then
-    return cache [proxy]
+  if Layer.caches.exists [proxy] ~= nil then
+    return Layer.caches.exists [proxy]
   end
   Layer.statistics.exists [proxy] = (Layer.statistics.exists [proxy] or 0) + 1
   local result = false
@@ -542,7 +541,7 @@ function Proxy.exists (proxy)
   else
     result = Proxy.raw (proxy) ~= nil
   end
-  cache [proxy] = result
+  Layer.caches.exists [proxy] = result
   return result
 end
 
