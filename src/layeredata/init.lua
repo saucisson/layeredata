@@ -106,6 +106,7 @@ function Layer.clear ()
     exists       = setmetatable ({}, Metatable),
     dependencies = setmetatable ({}, Metatable),
     resolve      = setmetatable ({}, Metatable),
+    lt           = setmetatable ({}, Metatable),
   }
   Layer.statistics = {
     index        = setmetatable ({}, Metatable),
@@ -655,11 +656,19 @@ end
 function Proxy.__lt (lhs, rhs)
   assert (getmetatable (lhs) == Proxy)
   assert (getmetatable (rhs) == Proxy)
+  if not Layer.caches.lt [lhs] then
+    Layer.caches.lt [lhs] = setmetatable ({}, IgnoreNone)
+  end
+  if Layer.caches.lt [lhs] [rhs] ~= nil then
+    return Layer.caches.lt [lhs] [rhs]
+  end
   for p in Proxy.dependencies (rhs, { all = true }) do
     if getmetatable (p) == Proxy and p == lhs then
+      Layer.caches.lt [lhs] [rhs] = true
       return true
     end
   end
+  Layer.caches.lt [lhs] [rhs] = false
   return false
 end
 

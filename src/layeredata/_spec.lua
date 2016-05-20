@@ -174,6 +174,7 @@ describe ("issue #9", function ()
         Layer.reference (layer).a
       },
     }
+    Layer.check = true
     assert.is_nil     (Layer.Proxy.messages (layer.a))
     assert.is_nil     (Layer.Proxy.messages (layer.b))
     assert.is_not_nil (Layer.Proxy.messages (layer.c))
@@ -335,6 +336,7 @@ describe ("issue #23", function ()
      b = {},
     }
     local _ = model.a.b
+    Layer.check = true
     assert.is_true (Layer.Proxy.messages (model.a.b).checked)
     assert.is_nil  (Layer.Proxy.messages (model))
   end)
