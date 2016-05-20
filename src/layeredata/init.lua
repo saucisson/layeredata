@@ -22,7 +22,7 @@ local Key = setmetatable ({
 local IgnoreNone   = {}
 local IgnoreKeys   = { __mode = "k"  }
 local IgnoreValues = { __mode = "v"  }
-local IgnoreAll    = { __mode = "kv" }
+--local IgnoreAll    = { __mode = "kv" }
 
 local Read_Only = {
   __index    = assert,
