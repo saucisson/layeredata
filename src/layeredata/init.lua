@@ -104,10 +104,18 @@ function Layer.clear ()
     ipairs       = setmetatable ({}, Metatable),
     len          = setmetatable ({}, Metatable),
     check        = setmetatable ({}, Metatable),
-    labels       = setmetatable ({}, Metatable),
     exists       = setmetatable ({}, Metatable),
     dependencies = setmetatable ({}, Metatable),
-    refines      = setmetatable ({}, Metatable),
+    resolve      = setmetatable ({}, Metatable),
+  }
+  Layer.statistics = {
+    index        = setmetatable ({}, Metatable),
+    pairs        = setmetatable ({}, Metatable),
+    ipairs       = setmetatable ({}, Metatable),
+    len          = setmetatable ({}, Metatable),
+    check        = setmetatable ({}, Metatable),
+    exists       = setmetatable ({}, Metatable),
+    dependencies = setmetatable ({}, Metatable),
   }
 end
 
@@ -857,7 +865,7 @@ end
 function Reference.resolve (reference, proxy)
   assert (getmetatable (reference) == Reference)
   assert (getmetatable (proxy    ) == Proxy    )
-  local cache  = Layer.caches.labels
+  local cache  = Layer.caches.resolve
   local cached = cache [proxy]
              and cache [proxy] [reference]
   if cached == Layer.tag.null or cached == Layer.tag.computing then
