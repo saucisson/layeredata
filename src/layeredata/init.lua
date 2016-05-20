@@ -586,7 +586,6 @@ function Proxy.dependencies (proxy)
       local refinments  = {
         refines  = {},
         parents  = {},
-        defaults = {},
       }
       for _, key in ipairs (hidden.keys) do
         if key == Layer.key.defaults
@@ -599,7 +598,7 @@ function Proxy.dependencies (proxy)
       local exists     = Proxy.exists (x)
       local in_special = getmetatable (hidden.keys [#hidden.keys]) == Key
       if x [Layer.key.refines] then
-        for i, refine in Layer.ipairs (x [Layer.key.refines]) do
+        for i, refine in ipairs (Proxy.raw (x [Layer.key.refines])) do
           refinments.refines [i] = refine
         end
       end
@@ -616,7 +615,7 @@ function Proxy.dependencies (proxy)
           end
           if not in_special and exists and parent [Layer.key.defaults] then
             for _, default in ipairs (Proxy.raw (parent [Layer.key.defaults])) do
-              refinments.defaults [#refinments.defaults+1] = default
+              refinments.parents [#refinments.parents+1] = default
             end
           end
         end
@@ -626,7 +625,6 @@ function Proxy.dependencies (proxy)
       local seen      = {}
       for _, container in ipairs {
         refinments.parents,
-        refinments.defaults,
         refinments.refines,
       } do
         for _, refine in ipairs (container) do
