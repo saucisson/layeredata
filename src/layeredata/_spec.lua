@@ -151,7 +151,6 @@ describe ("issue #9", function ()
     local Layer    = require "layeredata"
     local checks   = Layer.key.checks
     local refines  = Layer.key.refines
-    local messages = Layer.key.messages
     local layer    = Layer.new { name = "layer" }
     layer.a = {
       [checks] = {
@@ -175,9 +174,9 @@ describe ("issue #9", function ()
         Layer.reference (layer).a
       },
     }
-    assert.is_nil     (layer.a [messages])
-    assert.is_nil     (layer.b [messages])
-    assert.is_not_nil (layer.c [messages])
+    assert.is_nil     (Layer.Proxy.messages (layer.a))
+    assert.is_nil     (Layer.Proxy.messages (layer.b))
+    assert.is_not_nil (Layer.Proxy.messages (layer.c))
   end)
 end)
 
@@ -324,7 +323,6 @@ describe ("issue #23", function ()
     local Layer    = require "layeredata"
     local checks   = Layer.key.checks
     local defaults = Layer.key.defaults
-    local messages = Layer.key.messages
     local record   = Layer.new { name = "record" }
     record [checks] = {
      check = function ()
@@ -337,8 +335,8 @@ describe ("issue #23", function ()
      b = {},
     }
     local _ = model.a.b
-    assert.is_true (model.a.b [messages].checked)
-    assert.is_nil  (model [messages])
+    assert.is_true (Layer.Proxy.messages (model.a.b).checked)
+    assert.is_nil  (Layer.Proxy.messages (model))
   end)
 end)
 
