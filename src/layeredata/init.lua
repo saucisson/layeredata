@@ -555,6 +555,7 @@ function Proxy.dependencies (proxy)
   if not result and Proxy.exists (proxy) then
     local refines, dependencies
     local c3 = C3.new {
+      debug      = false,
       superclass = function (p)
         return p and refines (p) or {}
       end,
