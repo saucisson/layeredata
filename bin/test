@@ -4,11 +4,18 @@ set -e
 
 root=${1:-$PWD}
 
+branch=$(git rev-parse --abbrev-ref HEAD)
+if [ "${branch}" = "master" ]; then
+  server=""
+else
+  server="--server=https://luarocks.org/dev"
+fi
+
 for dir in "${root}"/lua*; do
   if [ -d "${dir}" ]; then
     echo "Installing in ${dir}..."
     "${dir}/bin/luarocks" make rockspec/layeredata-env-master-1.rockspec
-    "${dir}/bin/luarocks" make rockspec/layeredata-master-1.rockspec
+    "${dir}/bin/luarocks" make "${server}" rockspec/layeredata-master-1.rockspec
   fi
 done
 
