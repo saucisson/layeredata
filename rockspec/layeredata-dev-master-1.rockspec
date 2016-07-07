@@ -1,4 +1,4 @@
-package = "layeredata"
+package = "layeredata-dev"
 version = "master-1"
 
 source = {
@@ -27,7 +27,5 @@ dependencies = {
 
 build = {
   type    = "builtin",
-  modules = {
-    layeredata = "src/layeredata/init.lua",
-  },
+  modules = {},
 }
