@@ -1,4 +1,4 @@
-package = "layeredata-dev"
+package = "layeredata-env"
 version = "master-1"
 
 source = {
@@ -6,11 +6,8 @@ source = {
 }
 
 description = {
-  summary     = "Layered Data",
-  detailed    = [[
-The `layeredata` (layered data) library allows to represent data as trees
-observed through several layers.
-]],
+  summary     = "Development environment for layeredata",
+  detailed    = [[]],
   license     = "MIT/X11",
   homepage    = "https://github.com/cosyverif/layeredata",
   maintainer  = "Alban Linard <alban@linard.fr>",

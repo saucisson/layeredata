@@ -2,17 +2,14 @@ package = "layeredata"
 version = "master-1"
 
 source = {
-  url = "git://github.com/saucisson/lua-layeredata",
+  url = "git://github.com/cosyverif/layeredata",
 }
 
 description = {
   summary     = "Layered Data",
-  detailed    = [[
-The `layeredata` (layered data) library allows to represent data as trees
-observed through several layers.
-]],
+  detailed    = [[]],
   license     = "MIT/X11",
-  homepage    = "https://github.com/saucisson/lua-layeredata",
+  homepage    = "https://github.com/cosyverif/layeredata",
   maintainer  = "Alban Linard <alban@linard.fr>",
 }
 

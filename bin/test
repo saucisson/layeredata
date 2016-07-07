@@ -7,7 +7,7 @@ root=${1:-$PWD}
 for dir in "${root}"/lua*; do
   if [ -d "${dir}" ]; then
     echo "Installing in ${dir}..."
-    "${dir}/bin/luarocks" make rockspec/layeredata-dev-master-1.rockspec
+    "${dir}/bin/luarocks" make rockspec/layeredata-env-master-1.rockspec
     "${dir}/bin/luarocks" make rockspec/layeredata-master-1.rockspec
   fi
 done
