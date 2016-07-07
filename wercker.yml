@@ -1,58 +1,21 @@
-box: saucisson/lua-testenv
-build:
+box: cosyverif/lua-environments
   steps:
     - script:
-        name: "install module"
+        name: "install dependencies"
         code: |
-          for dir in /home/lua/lua*; do
-            if [ -d "${dir}" ]; then
-              echo "Installing in ${dir}..."
-              "${dir}/bin/luarocks" make rockspec/*-master-1.rockspec
-            fi
-          done
+          luarocks install luacov-coveralls
     - script:
-        name: "run checks"
+        name: "check and test"
         code: |
-          for dir in /home/lua/lua*; do
-            if [ -d "${dir}" ]; then
-              echo "Checking in ${dir}..."
-              "${dir}/bin/luacheck" --std=max+busted src/
-            fi
-          done
-    - script:
-        name: "run tests"
-        code: |
-          for dir in /home/lua/lua*; do
-            if [ -d "${dir}" ]; then
-              echo "Testing in ${dir}..."
-              "${dir}/bin/busted" --coverage --verbose src/
-            fi
-          done
+          ./bin/test /lua/
   after-steps:
     - script:
         name: "export to coveralls"
         code: |
-          branch=$(git rev-parse --abbrev-ref HEAD)
-          /home/lua/lua52/bin/luacov-coveralls \
-            --repo-token "${COVERALLS_TOKEN}" \
-            --exclude share --exclude busted --exclude _spec \
-            --include cosy/formalism \
-            --root src/ \
-            --service-name "${branch}"
-
+          ./bin/coveralls
 deploy:
   luarocks:
     - script:
         name: "upload to luarocks"
         code: |
-          tag=$(git describe --tags --abbrev=0 || echo "0.0")
-          count=$(git rev-list --count HEAD ^"${tag}" || git rev-list --count HEAD)
-          cd rockspec || exit 1
-          rockspec=layeredata-master-1.rockspec
-          name=layeredata
-          sed -e "s/master-1/${tag}-${count}/" "${rockspec}" \
-            > "${name}"-"${tag}"-"${count}".rockspec
-          /home/lua/lua52/bin/luarocks upload \
-             --api-key="${LUAROCKS_API_KEY}" \
-            "${name}"-"${tag}"-"${count}".rockspec
-          cd ..
+          ./bin/upload

@@ -1,0 +1,9 @@
+#! /usr/bin/env bash
+
+branch=$(git rev-parse --abbrev-ref HEAD)
+luacov-coveralls \
+  --repo-token "${COVERALLS_TOKEN}" \
+  --exclude share --exclude busted --exclude _spec \
+  --include layeredata \
+  --root src/ \
+  --service-name "${branch}"
