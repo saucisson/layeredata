@@ -1,5 +1,7 @@
 #! /usr/bin/env bash
 
+set -e
+
 branch=$(git rev-parse --abbrev-ref HEAD)
 luacov-coveralls \
   --repo-token "${COVERALLS_TOKEN}" \
