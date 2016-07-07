@@ -14,8 +14,6 @@ build:
         name: "export to coveralls"
         code: |
           ./bin/coveralls
-deploy:
-  luarocks:
     - script:
         name: "upload to luarocks"
         code: |
