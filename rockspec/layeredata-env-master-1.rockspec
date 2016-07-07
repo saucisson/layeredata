@@ -2,7 +2,7 @@ package = "layeredata-env"
 version = "master-1"
 
 source = {
-  url    = "git://github.com/cosyverif/layeredata",
+  url    = "git+https://github.com/cosyverif/layeredata.git",
   branch = "master",
 }
 
