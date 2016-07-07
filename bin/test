@@ -12,13 +12,10 @@ for dir in "${root}"/lua*; do
   fi
 done
 
-"${root}"/lua52/bin/luacheck --std=max+busted src/
-
-for _ in {1..1}; do
-  for dir in "${root}"/lua*; do
-    if [ -d "${dir}" ]; then
-      echo "Testing in ${dir}..."
-      "${dir}/bin/busted" --verbose --coverage src/
-    fi
-  done
+for dir in "${root}"/lua*; do
+  if [ -d "${dir}" ]; then
+    echo "Testing in ${dir}..."
+    "${dir}/bin/luacheck" --std=max+busted     src/
+    "${dir}/bin/busted"   --verbose --coverage src/
+  fi
 done
