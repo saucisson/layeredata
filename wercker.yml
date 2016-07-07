@@ -1,4 +1,5 @@
 box: cosyverif/lua-environments
+build:
   steps:
     - script:
         name: "install dependencies"
