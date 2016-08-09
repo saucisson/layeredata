@@ -421,7 +421,7 @@ function Proxy.__index (proxy, key)
   Layer.caches    .index [child] = Layer.tag.computing
   if Proxy.exists (child) then
     for _, value in Proxy.dependencies (child) do
-      if value then
+      if value ~= nil then
         if getmetatable (value) == Reference then
           result = Reference.resolve (value, child)
         elseif getmetatable (value) == Proxy then
@@ -524,10 +524,10 @@ function Proxy.exists (proxy)
   local hidden = Layer.hidden [proxy]
   if hidden.parent then
     for _, raw in Proxy.dependencies (hidden.parent) do
-      if type (raw) == "table"
+      if  type (raw) == "table"
       and getmetatable (raw) ~= Proxy
       and getmetatable (raw) ~= Reference
-      and raw [hidden.keys [#hidden.keys]] then
+      and raw [hidden.keys [#hidden.keys]] ~= nil then
         local value = raw [hidden.keys [#hidden.keys]]
         if  getmetatable (value) == Reference
         and Reference.resolve (value, proxy) ~= nil then

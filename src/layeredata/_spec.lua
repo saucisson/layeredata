@@ -390,4 +390,17 @@ describe ("issue #46", function ()
     Layer.Proxy.replacewith (l3.m, l1)
     assert.is_not_nil (l3.m [Layer.key.meta])
   end)
+
+  describe ("issue #48", function ()
+    it ("is fixed", function ()
+      local Layer = require "layeredata"
+      local l1    = Layer.new { name = "l1" }
+      l1.key = true
+      assert.are.equal (l1.key, true)
+      l1.key = false
+      assert.are.equal (l1.key, false)
+      l1.key = nil
+      assert.is_nil (l1.key)
+    end)
+  end)
 end)
