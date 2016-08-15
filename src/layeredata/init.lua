@@ -583,7 +583,7 @@ function Proxy.dependencies (proxy)
       end
 
       refines = function (x)
-        assert (getmetatable (x) == Proxy, debug.traceback ())
+        assert (getmetatable (x) == Proxy)
         local found = refines_cache [x]
         if found ~= nil then
           return found or nil
