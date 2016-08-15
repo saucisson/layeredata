@@ -557,7 +557,7 @@ function Proxy.dependencies (proxy)
   local cache  = Layer.caches.dependencies
   local result = cache [proxy]
   local dependencies_cache = setmetatable ({}, IgnoreKeys)
-  local refines_cache     = setmetatable ({}, IgnoreKeys)
+  local refines_cache      = setmetatable ({}, IgnoreKeys)
   if result == nil then
     Layer.statistics.dependencies [proxy] = (Layer.statistics.dependencies [proxy] or 0) + 1
     if Proxy.exists (proxy) then
@@ -592,8 +592,8 @@ function Proxy.dependencies (proxy)
         local hidden      = Layer.hidden [x]
         local all         = {}
         local refinments  = {
-          refines  = {},
-          parents  = {},
+          refines = {},
+          parents = {},
         }
         for _, key in ipairs (hidden.keys) do
           if key == Layer.key.defaults
