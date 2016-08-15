@@ -590,6 +590,7 @@ function Proxy.dependencies (proxy)
         end
         refines_cache [x] = false
         local hidden      = Layer.hidden [x]
+        local raw         = Proxy.raw (x)
         local all         = {}
         local refinments  = {
           refines = {},
@@ -602,15 +603,15 @@ function Proxy.dependencies (proxy)
             return all
           end
         end
-        local exists     = Proxy.exists (x)
         local in_special = getmetatable (hidden.keys [#hidden.keys]) == Key
-        if x [Layer.key.refines] then
-          for i, refine in ipairs (Proxy.raw (x [Layer.key.refines])) do
-            refinments.refines [i] = refine
+        if type (raw) == "table" then
+          for _, refine in ipairs (raw [Layer.key.refines] or {}) do
+            refinments.refines [#refinments.refines+1] = refine
           end
         end
         if hidden.parent then
-          local key = hidden.keys [#hidden.keys]
+          local exists  = Proxy.exists (x)
+          local key     = hidden.keys [#hidden.keys]
           local parents = {}
           for parent in Proxy.dependencies (hidden.parent) do
             parents [#parents+1] = parent
