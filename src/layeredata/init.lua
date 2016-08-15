@@ -529,10 +529,9 @@ function Proxy.exists (proxy)
       and getmetatable (raw) ~= Reference
       and raw [hidden.keys [#hidden.keys]] ~= nil then
         local value = raw [hidden.keys [#hidden.keys]]
-        if  getmetatable (value) == Reference
-        and Reference.resolve (value, proxy) ~= nil then
+        if  getmetatable (value) == Reference then
           result = true
-        elseif getmetatable (value) ~= Reference then
+        else
           result = true
         end
         break
@@ -618,11 +617,13 @@ function Proxy.dependencies (proxy)
           end
           reverse (parents)
           for _, parent in ipairs (parents) do
-            if parent ~= hidden.parent then
-              refinments.parents [#refinments.parents+1] = Proxy.child (parent, key)
+            local child = Proxy.child (parent, key)
+            if parent ~= hidden.parent and Proxy.exists (child) then
+              refinments.parents [#refinments.parents+1] = child
             end
-            if not in_special and exists and parent [Layer.key.defaults] then
-              for _, default in ipairs (Proxy.raw (parent [Layer.key.defaults])) do
+            local raw_parent = Proxy.raw (parent)
+            if not in_special and exists and raw_parent then
+              for _, default in ipairs (raw_parent [Layer.key.defaults] or {}) do
                 refinments.parents [#refinments.parents+1] = default
               end
             end
