@@ -2,7 +2,7 @@ box: cosyverif/lua-environments
 build:
   steps:
     - script:
-        name: "install dependencies"
+        name: "install"
         code: |
           for dir in /lua/lua*; do
             if [ -d "${dir}" ]; then
@@ -13,17 +13,13 @@ build:
     - script:
         name: "check"
         code: |
-          for dir in /lua/lua*; do
-            if [ -d "${dir}" ]; then
-              "${dir}/bin/luacheck" src/
-            fi
-          done
+          luacheck src/
     - script:
         name: "test"
         code: |
           for dir in /lua/lua*; do
             if [ -d "${dir}" ]; then
-              "${dir}/bin/busted" src/layeredata/init_spec.lua
+              "${dir}/bin/busted" src/
             fi
           done
   after-steps:

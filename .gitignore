@@ -1,4 +1,3 @@
 .wercker
 rockspec/*.src.rock
-lua*
 ENVIRONMENT
