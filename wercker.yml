@@ -19,6 +19,7 @@ build:
         code: |
           for dir in /lua/lua*; do
             if [ -d "${dir}" ]; then
+              echo "${dir}"
               "${dir}/bin/busted" src/
             fi
           done
