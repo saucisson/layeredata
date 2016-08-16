@@ -603,6 +603,13 @@ function Proxy.dependencies (proxy)
           end
         end
         local in_special = getmetatable (hidden.keys [#hidden.keys]) == Key
+        repeat
+          if getmetatable (raw) == Proxy then
+            raw = Proxy.raw (raw)
+          elseif getmetatable (raw) == Reference then
+            raw = Reference.resolve (raw, proxy)
+          end
+        until getmetatable (raw) ~= Proxy and getmetatable (raw) ~= Reference
         if type (raw) == "table" then
           for _, refine in ipairs (raw [Layer.key.refines] or {}) do
             refinments.refines [#refinments.refines+1] = refine
@@ -623,6 +630,13 @@ function Proxy.dependencies (proxy)
             end
             local raw_parent = Proxy.raw (parent)
             if not in_special and exists and raw_parent then
+              repeat
+                if getmetatable (raw_parent) == Proxy then
+                  raw_parent = Proxy.raw (raw_parent)
+                elseif getmetatable (raw_parent) == Reference then
+                  raw_parent = Reference.resolve (raw_parent, proxy)
+                end
+              until getmetatable (raw_parent) ~= Proxy and getmetatable (raw_parent) ~= Reference
               for _, default in ipairs (raw_parent [Layer.key.defaults] or {}) do
                 refinments.parents [#refinments.parents+1] = default
               end
@@ -847,6 +861,7 @@ function Reference.__tostring (reference)
 end
 
 function Reference.__index (reference, key)
+  if type (key) == "number" then assert (key < 10) end
   assert (getmetatable (reference) == Reference)
   local found = Layer.children [reference]
             and Layer.children [reference] [key]
