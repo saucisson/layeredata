@@ -22,7 +22,15 @@ done
 for dir in "${root}"/lua*; do
   if [ -d "${dir}" ]; then
     echo "Testing in ${dir}..."
-    "${dir}/bin/luacheck" --std=max+busted     src/
-    "${dir}/bin/busted"   --verbose --coverage src/
+    "${dir}/bin/luacheck" src/
+    "${dir}/bin/busted"   src/layeredata/init_spec.lua
+  fi
+done
+
+for dir in "${root}"/lua*; do
+  if [ -d "${dir}" ]; then
+    "${dir}/bin/luacov"
+    sed -ne '/Summary/,$ p' luacov.report.out
+    break
   fi
 done
