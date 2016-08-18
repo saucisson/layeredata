@@ -7,6 +7,8 @@
 `layeredata` is a Lua library that allows to represent data in several layers,
 and view them as merged.
 
+See [this article](http://ceur-ws.org/Vol-1591/paper19.pdf).
+
 # Install
 
 This module is available in [luarocks](https://luarocks.org):
