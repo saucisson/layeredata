@@ -654,7 +654,7 @@ function Proxy.dependencies (proxy)
         } do
           for _, refine in ipairs (container) do
             while refine and getmetatable (refine) == Reference do
-              refine = Reference.resolve (refine, parent)
+              refine = parent and Reference.resolve (refine, parent) or nil
             end
             if getmetatable (refine) == Proxy then
               flattened [#flattened+1] = refine
