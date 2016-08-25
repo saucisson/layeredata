@@ -571,23 +571,29 @@ function Proxy.dependencies (proxy)
       dependencies = function (x)
         assert (getmetatable (x) == Proxy)
         local found = dependencies_cache [x]
-        if found ~= nil then
-          return found or nil
+        if found == Layer.tag.null then
+          return nil
+        elseif found ~= nil then
+          assert (found ~= Layer.tag.computing)
+          return found
         end
-        dependencies_cache [x] = false
+        dependencies_cache [x] = Layer.tag.computing
         local all = c3 (x)
         reverse (all)
-        dependencies_cache [x] = all
+        dependencies_cache [x] = all ~= nil and all or Layer.tag.null
         return all
       end
 
       refines = function (x)
         assert (getmetatable (x) == Proxy)
         local found = refines_cache [x]
-        if found ~= nil then
-          return found or nil
+        if found == Layer.tag.null then
+          return nil
+        elseif found ~= nil then
+          assert (found ~= Layer.tag.computing)
+          return found
         end
-        refines_cache [x] = false
+        refines_cache [x] = Layer.tag.computing
         local hidden      = Layer.hidden [x]
         local raw         = Proxy.raw (x)
         local all         = {}
@@ -598,7 +604,7 @@ function Proxy.dependencies (proxy)
         for _, key in ipairs (hidden.keys) do
           if key == Layer.key.defaults
           or key == Layer.key.refines then
-            refines_cache [proxy] = all
+            refines_cache [proxy] = all ~= nil and all or Layer.tag.null
             return all
           end
         end
@@ -669,7 +675,7 @@ function Proxy.dependencies (proxy)
           end
         end
         reverse (all)
-        refines_cache [proxy] = all
+        refines_cache [proxy] = all ~= nil and all or Layer.tag.null
         return all
       end
 
