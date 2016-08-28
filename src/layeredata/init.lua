@@ -660,7 +660,7 @@ function Proxy.dependencies (proxy)
         } do
           for _, refine in ipairs (container) do
             while refine and getmetatable (refine) == Reference do
-              refine = parent and Reference.resolve (refine, parent) or nil
+              refine = Reference.resolve (refine, parent)
             end
             if getmetatable (refine) == Proxy then
               flattened [#flattened+1] = refine
@@ -894,7 +894,9 @@ end
 
 function Reference.resolve (reference, proxy)
   assert (getmetatable (reference) == Reference)
-  assert (getmetatable (proxy    ) == Proxy    )
+  if getmetatable (proxy) ~= Proxy then
+    return nil
+  end
   local cache  = Layer.caches.resolve
   local cached = cache [proxy]
              and cache [proxy] [reference]
