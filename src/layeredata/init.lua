@@ -397,7 +397,7 @@ function Proxy.check_all (proxy)
     assert (getmetatable (x) == Proxy)
     seen [x] = true
     Proxy.check (x)
-    for _, child in pairs (x) do
+    for _, child in Layer.pairs (x) do
       if getmetatable (child) == Proxy and not seen [child] then
         iterate (child)
       end
