@@ -120,12 +120,9 @@ function Layer.clear ()
   Layer.messages = setmetatable ({}, IgnoreKeys)
 end
 
-function Layer.dump (layer)
-  assert (getmetatable (layer) == Layer
-       or getmetatable (layer) == Proxy and #Layer.hidden [layer].keys == 0)
-  if getmetatable (layer) == Proxy then
-    layer = Layer.hidden [layer].layer
-  end
+function Layer.dump (proxy)
+  assert (getmetatable (proxy) == Proxy and #Layer.hidden [proxy].keys == 0)
+  local layer = Layer.hidden [proxy].layer
   local key_name = {}
   for k, v in pairs (Layer.key) do
     key_name [v] = k
@@ -148,9 +145,9 @@ function Layer.dump (layer)
       return result
     elseif getmetatable (x) == Proxy then
       assert (not is_key)
-      local proxy  = Layer.hidden [x]
-      local result = "Layer.require " .. string.format ("%q", proxy.layer.name)
-      for _, y in ipairs (proxy.keys) do
+      local p = Layer.hidden [x]
+      local result = "Layer.require " .. string.format ("%q", p.layer.name)
+      for _, y in ipairs (p.keys) do
         result = result .. " [" .. convert (y) .. "]"
       end
       return result
@@ -235,8 +232,8 @@ end
 end
 
 function Layer.merge (source, target)
-  assert (getmetatable (source) == Layer)
-  assert (getmetatable (target) == Layer)
+  assert (getmetatable (source) == Proxy and #Layer.hidden [source].keys == 0)
+  assert (getmetatable (target) == Proxy and #Layer.hidden [target].keys == 0)
   local function iterate (s, t)
     assert (type (s) == "table")
     assert (type (t) == "table")
@@ -262,6 +259,8 @@ function Layer.merge (source, target)
       end
     end
   end
+  source = Layer.hidden [source].layer
+  target = Layer.hidden [target].layer
   iterate (Layer.hidden [source].data, Layer.hidden [target].data)
 end
 
