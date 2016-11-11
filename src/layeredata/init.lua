@@ -29,16 +29,6 @@ local Read_Only = {
   __newindex = function () assert (false) end,
 }
 
-local Cache = {
-  __mode = "k",
-}
-
-function Cache.__index (cache, key)
-  local result = setmetatable ({}, IgnoreKeys)
-  cache [key] = result
-  return result
-end
-
 -- ----------------------------------------------------------------------
 -- ## Layers
 -- ----------------------------------------------------------------------
