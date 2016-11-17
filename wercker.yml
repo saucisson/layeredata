@@ -31,21 +31,23 @@ build:
           if [ "${WERCKER_GIT_BRANCH}" = "master" ]; then
             tag=$(git describe --tags --abbrev=0 || echo "0.0")
             count=$(git rev-list --count HEAD ^"${tag}" || git rev-list --count HEAD)
-          else
-            tag="${WERCKER_GIT_BRANCH}"
-            count=$(git rev-list --count HEAD ^"${tag}" || git rev-list --count HEAD)
+            cd rockspec || exit 1
+            sed -e "s/master-1/${tag}-${count}/" \
+                -e "s/master/${tag}/" \
+              "layeredata-master-1.rockspec" \
+              > "layeredata-${tag}-${count}.rockspec"
+            luarocks upload \
+              --force \
+              --api-key="${LUAROCKS_TOKEN}" \
+              "layeredata-${tag}-${count}.rockspec"
+            cd ..
           fi
-          cd rockspec || exit 1
-          sed -e "s/master-1/${tag}-${count}/" \
-              -e "s/master/${tag}/" \
-            "layeredata-master-1.rockspec" \
-            > "layeredata-${tag}-${count}.rockspec"
-          luarocks upload \
-            --force \
-            --api-key="${LUAROCKS_TOKEN}" \
-            "layeredata-${tag}-${count}.rockspec"
-          cd ..
   after-steps:
+    - slack-notifier:
+        url: $SLACK_URL
+        channel: developers
+        username: CosyVerif
+        branch: ${WERCKER_GIT_BRANCH}
     - script:
         name: "export to coveralls"
         code: |
