@@ -45,7 +45,7 @@ build:
   after-steps:
     - slack-notifier:
         url: $SLACK_URL
-        channel: developers
+        channel: notifications
         username: CosyVerif
         branch: ${WERCKER_GIT_BRANCH}
     - script:
