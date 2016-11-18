@@ -111,21 +111,29 @@ end)
 
 describe ("issue #7", function ()
   it ("is fixed", function ()
-    local Layer  = require "layeredata"
-    local layer  = Layer.new { name = "layer" }
-    layer.x = {
+    local Layer   = require "layeredata"
+    local refines = Layer.key.refines
+    local l0      = Layer.new { name = "l0" }
+    local l1      = Layer.new { name = "l1" }
+    local l2      = Layer.new { name = "l2", temporary = true }
+    l1.x = {
       a = {
         z = 1,
       },
     }
-    layer.x.b = Layer.reference (layer.x).a
-    layer.x.c = nil
-    assert.are.equal (layer.x.b.z, layer.x.a.z)
-    local dumped = Layer.dump (layer)
+    l1.x.b = Layer.reference (l1.x).a
+    l2 [refines] = { l1, l0 }
+    l2.x.b = nil
+    assert.are.equal (l1.x.b.z, l1.x.a.z)
+    assert.is_nil    (l2.x.b)
+    local d1 = Layer.dump (l1)
+    local d2 = Layer.dump (l2, { [l1] = true })
     local l, r   = Layer.new {}
     local loader = _G.loadstring or _G.load
-    loader (dumped) () (Layer, l, r)
-    assert.are.equal (l.x.b.z, layer.x.a.z)
+    loader (d1) () (Layer, l, r)
+    assert.are.equal (l.x.b.z, l1.x.a.z)
+    loader (d2) () (Layer, l, r)
+    assert.is_nil (l.x.b)
   end)
 end)
 

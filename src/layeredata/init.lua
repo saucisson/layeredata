@@ -36,6 +36,7 @@ local Read_Only = {
 Layer.key = setmetatable ({
   checks   = setmetatable ({ name = "checks"   }, Key),
   defaults = setmetatable ({ name = "defaults" }, Key),
+  deleted  = setmetatable ({ name = "deleted"  }, Key),
   labels   = setmetatable ({ name = "labels"   }, Key),
   meta     = setmetatable ({ name = "meta"     }, Key),
   refines  = setmetatable ({ name = "refines"  }, Key),
@@ -54,15 +55,23 @@ Layer.references = setmetatable ({}, IgnoreKeys  )
 
 function Layer.new (t)
   assert (t == nil or type (t) == "table")
+  t = t or {}
   local layer = setmetatable ({}, Layer)
   Layer.hidden [layer] = {
-    name      = t and t.name or Uuid (),
+    name      = t.name or Uuid (),
+    temporary = t.temporary or false,
     data      = {},
     observers = {},
   }
-  local proxy = Proxy    .new (layer)
-  local ref   = Reference.new (proxy)
-  Layer.hidden [layer].proxy = proxy
+  local hidden = Layer.hidden [layer]
+  local ref
+  local proxy = Proxy.new (layer)
+  if not t.temporary then
+    ref = Reference.new (proxy)
+  end
+  hidden.proxy = proxy
+  hidden.ref   = ref
+  Layer.loaded [hidden.name] = proxy
   return proxy, ref
 end
 
@@ -74,7 +83,9 @@ end
 function Layer.require (name)
   local loaded = Layer.loaded [name]
   if loaded then
-    return loaded, Reference.new (loaded)
+    local layer = Layer.hidden [loaded].layer
+    local info  = Layer.hidden [layer]
+    return info.proxy, info.ref
   else
     local layer, ref = Layer.new {
       name = name,
@@ -114,19 +125,19 @@ function Layer.dump (proxy, except)
   assert (getmetatable (proxy) == Proxy and #Layer.hidden [proxy].keys == 0)
   local exceptions = {}
   for k, v in pairs (except or {}) do
-    exceptions [Layer.hidden [k].layer] = v
+    local layer = Layer.hidden [k].layer
+    exceptions [layer] = v
   end
   local layer = Layer.hidden [proxy].layer
   local key_name = {}
   for k, v in pairs (Layer.key) do
     key_name [v] = k
   end
-  for k, v in pairs (Layer.tag) do
-    key_name [v] = k
-  end
+  local seen_keys = {}
   local function convert (x, is_key, indent)
     indent = indent or ""
     if getmetatable (x) == Key then
+      seen_keys [x] = true
       return is_key
          and indent .. "[" .. key_name [x] .. "]"
           or key_name [x]
@@ -143,10 +154,11 @@ function Layer.dump (proxy, except)
     elseif getmetatable (x) == Proxy then
       assert (not is_key)
       local p = Layer.hidden [x]
-      if exceptions [p] then
+      if exceptions [p.layer] then
         return nil
       end
-      local result = "Layer.require " .. string.format ("%q", p.layer.name)
+      local l = Layer.hidden [p.layer]
+      local result = "Layer.require " .. string.format ("%q", l.name)
       for _, y in ipairs (p.keys) do
         result = result .. " [" .. convert (y) .. "]"
       end
@@ -158,32 +170,43 @@ function Layer.dump (proxy, except)
       local nindent    = indent .. "  "
       for k, v in pairs (x) do
         if getmetatable (k) == Key then
-          subresults [#subresults+1] = convert (k, true, nindent) .. " = " .. convert (v, false, nindent)
           seen [k] = true
+          subresults [#subresults+1] = convert (k, true, nindent) .. " = " .. convert (v, false, nindent)
         end
       end
       for k, v in ipairs (x) do
-        subresults [#subresults+1] = nindent .. convert (v, false, nindent)
         seen [k] = true
+        local converted = convert (v, false, nindent)
+        if converted then
+          subresults [#subresults+1] = nindent .. converted
+        end
       end
       for _, oftype in ipairs { "number", "boolean", "string" } do
         for k, v in pairs (x) do
           if type (k) == oftype and not seen [k] then
-            subresults [#subresults+1] = convert (k, true, nindent) .. " = " .. convert (v, false, nindent)
             seen [k] = true
+            local skey   = convert (k, true , nindent)
+            local svalue = convert (v, false, nindent)
+            if skey and svalue then
+              subresults [#subresults+1] =  skey .. " = " .. svalue
+            end
           end
         end
       end
       for k, v in pairs (x) do
         if getmetatable (k) == Proxy then
-          subresults [#subresults+1] = nindent .. "[" .. convert (k, false, nindent) .. "] = " .. convert (v, false, nindent)
           seen [k] = true
+          subresults [#subresults+1] = nindent .. "[" .. convert (k, false, nindent) .. "] = " .. convert (v, false, nindent)
         end
       end
       for k in pairs (x) do
         assert (seen [k])
       end
-      return "{\n" .. table.concat (subresults, ",\n") .. "\n" .. indent .. "}"
+      if #subresults == 0 then
+        return "{}"
+      else
+        return "{\n" .. table.concat (subresults, ",\n") .. "\n" .. indent .. "}"
+      end
     elseif type (x) == "string" then
       return is_key
          and indent .. (x:match "^[_%a][_%w]*$" and x or "[" .. string.format ("%q", x) .. "]")
@@ -213,19 +236,21 @@ end
   local contents  = {}
   local localsize = 0
   local keys      = {}
-  for key in pairs (Layer.key) do
-    localsize = math.max (localsize, #tostring (key))
-    keys [#keys+1] = {
-      name = tostring (key),
-      path = "Layer.key." .. key,
-    }
+  -- body
+  for key, value in pairs (Layer.hidden [layer].data) do
+    local skey   = convert (key, true, "")
+    local svalue = convert (value, false, "  "):gsub ("%%", "%%%%")
+    if skey:match "%S*%[" then
+      skey = "  layer " .. skey
+    else
+      skey = "  layer." .. skey
+    end
+    contents [#contents+1] = skey .. " = " .. svalue
   end
-  for key in pairs (Layer.tag) do
-    localsize = math.max (localsize, #tostring (key))
-    keys [#keys+1] = {
-      name = tostring (key),
-      path = "Layer.tag." .. key,
-    }
+  -- locals
+  for x in pairs (seen_keys) do
+    localsize = math.max (localsize, #x.name)
+    keys [#keys+1] = x
   end
   table.sort (keys, function (l, r) return l.name < r.name end)
   for _, t in ipairs (keys) do
@@ -233,18 +258,7 @@ end
     for _ = #t.name+1, localsize do
       pad = pad .. " "
     end
-    locals [#locals+1] = "  local " .. t.name .. pad .. " = " .. t.path
-  end
-  for key, value in pairs (Layer.hidden [layer].data) do
-    local skey = convert (key, true, "")
-    if skey:match "%S*%[" then
-      skey = "  layer " .. skey
-    else
-      skey = "  layer." .. skey
-    end
-    contents [#contents+1] = skey
-                          .. " = "
-                          .. convert (value, false, "  "):gsub ("%%", "%%%%")
+    locals [#locals+1] = "  local " .. t.name .. pad .. " = Layer.key." .. t.name
   end
   result = result:gsub ("{{{NAME}}}"  , string.format ("%q", Layer.hidden [layer].name))
   result = result:gsub ("{{{LOCALS}}}", table.concat (locals, "\n"))
@@ -446,7 +460,7 @@ function Proxy.__index (proxy, key)
           result = Reference.resolve (value, child)
         elseif getmetatable (value) == Proxy then
           result = value
-        elseif value == Layer.tag.null then
+        elseif value == Layer.key.deleted then
           result = nil
         elseif type (value) == "table" then
           result = child
@@ -512,7 +526,7 @@ function Proxy.__newindex (proxy, key, value)
     current = current [k]
   end
   if value == nil then
-    current [key] = Layer.tag.null
+    current [key] = Layer.key.deleted
   else
     current [key] = value
   end
@@ -562,7 +576,7 @@ function Proxy.exists (proxy)
     end
   else
     result = Proxy.raw (proxy) ~= nil
-         and Proxy.raw (proxy) ~= Layer.tag.null
+         and Proxy.raw (proxy) ~= Layer.key.deleted
   end
   Layer.caches.exists [proxy] = result
   return result
