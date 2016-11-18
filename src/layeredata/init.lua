@@ -459,10 +459,19 @@ function Proxy.__newindex (proxy, key, value)
         or getmetatable (key) == Proxy
         or getmetatable (key) == Reference
         or getmetatable (key) == Key)
-  local hidden  = Layer.hidden [proxy]
-  local layer   = Layer.hidden [hidden.layer]
-  local current = layer.data
-  local keys    = hidden.keys
+  local hidden    = Layer.hidden [proxy]
+  local layer     = Layer.hidden [hidden.layer]
+  local current   = layer.data
+  local keys      = hidden.keys
+  local coroutine = Coromake ()
+  local observers = {}
+  for observer in pairs (layer.observers) do
+    observers [observer] = coroutine.create (observer)
+  end
+  local old_value = proxy [key]
+  for _, co in pairs (observers) do
+    assert (coroutine.resume (co, proxy, old_value))
+  end
   for _, k in ipairs (keys) do
     if current [k] == nil then
       current [k] = {}
@@ -470,12 +479,13 @@ function Proxy.__newindex (proxy, key, value)
     current = current [k]
   end
   current [key] = value
+  local new_value = proxy [key]
+  for _, co in pairs (observers) do
+    coroutine.resume (co, proxy, key, new_value)
+  end
   Layer.clear ()
   if Layer.check then
     Proxy.check (proxy)
-  end
-  for observer in pairs (layer.observers) do
-    observer (proxy, key, value)
   end
 end
 
