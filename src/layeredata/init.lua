@@ -281,7 +281,8 @@ function Layer.merge (source, target)
         for kk, vv in pairs (v) do
           t [k] [kk] = vv
         end
-      elseif getmetatable (v) == Reference
+      elseif v == Layer.key.deleted
+      or     getmetatable (v) == Reference
       or     getmetatable (v) == Proxy
       or     type (v) ~= "table"
       then
