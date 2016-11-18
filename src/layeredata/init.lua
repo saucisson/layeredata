@@ -110,11 +110,18 @@ function Layer.clear ()
   Layer.messages = setmetatable ({}, IgnoreKeys)
 end
 
-function Layer.dump (proxy)
+function Layer.dump (proxy, except)
   assert (getmetatable (proxy) == Proxy and #Layer.hidden [proxy].keys == 0)
+  local exceptions = {}
+  for k, v in pairs (except or {}) do
+    exceptions [Layer.hidden [k].layer] = v
+  end
   local layer = Layer.hidden [proxy].layer
   local key_name = {}
   for k, v in pairs (Layer.key) do
+    key_name [v] = k
+  end
+  for k, v in pairs (Layer.tag) do
     key_name [v] = k
   end
   local function convert (x, is_key, indent)
@@ -136,6 +143,9 @@ function Layer.dump (proxy)
     elseif getmetatable (x) == Proxy then
       assert (not is_key)
       local p = Layer.hidden [x]
+      if exceptions [p] then
+        return nil
+      end
       local result = "Layer.require " .. string.format ("%q", p.layer.name)
       for _, y in ipairs (p.keys) do
         result = result .. " [" .. convert (y) .. "]"
@@ -196,28 +206,49 @@ function Layer.dump (proxy)
   local result = [[
 return function (Layer, layer, ref)
 {{{LOCALS}}}
-  Layer.Proxy.replacewith (layer, {{{BODY}}})
+{{{BODY}}}
 end
   ]]
   local locals    = {}
+  local contents  = {}
   local localsize = 0
   local keys      = {}
   for key in pairs (Layer.key) do
-    localsize = math.max (localsize, #key)
-    keys [#keys+1] = key
+    localsize = math.max (localsize, #tostring (key))
+    keys [#keys+1] = {
+      name = tostring (key),
+      path = "Layer.key." .. key,
+    }
   end
-  table.sort (keys)
-  for _, key in ipairs (keys) do
+  for key in pairs (Layer.tag) do
+    localsize = math.max (localsize, #tostring (key))
+    keys [#keys+1] = {
+      name = tostring (key),
+      path = "Layer.tag." .. key,
+    }
+  end
+  table.sort (keys, function (l, r) return l.name < r.name end)
+  for _, t in ipairs (keys) do
     local pad = ""
-    for _ = #key+1, localsize do
+    for _ = #t.name+1, localsize do
       pad = pad .. " "
     end
-    locals [#locals+1] = "  local " .. key .. pad .. " = Layer.key." .. key
+    locals [#locals+1] = "  local " .. t.name .. pad .. " = " .. t.path
+  end
+  for key, value in pairs (Layer.hidden [layer].data) do
+    local skey = convert (key, true, "")
+    if skey:match "%S*%[" then
+      skey = "  layer " .. skey
+    else
+      skey = "  layer." .. skey
+    end
+    contents [#contents+1] = skey
+                          .. " = "
+                          .. convert (value, false, "  "):gsub ("%%", "%%%%")
   end
   result = result:gsub ("{{{NAME}}}"  , string.format ("%q", Layer.hidden [layer].name))
   result = result:gsub ("{{{LOCALS}}}", table.concat (locals, "\n"))
-  local body = convert (Layer.hidden [layer].data, false, "    "):gsub ("%%", "%%%%")
-  result = result:gsub ("{{{BODY}}}"  , body)
+  result = result:gsub ("{{{BODY}}}"  , table.concat (contents, "\n"))
   return result
 end
 
@@ -415,6 +446,8 @@ function Proxy.__index (proxy, key)
           result = Reference.resolve (value, child)
         elseif getmetatable (value) == Proxy then
           result = value
+        elseif value == Layer.tag.null then
+          result = nil
         elseif type (value) == "table" then
           result = child
         else
@@ -478,7 +511,11 @@ function Proxy.__newindex (proxy, key, value)
     end
     current = current [k]
   end
-  current [key] = value
+  if value == nil then
+    current [key] = Layer.tag.null
+  else
+    current [key] = value
+  end
   local new_value = proxy [key]
   for _, co in pairs (observers) do
     coroutine.resume (co, proxy, key, new_value)
@@ -486,19 +523,6 @@ function Proxy.__newindex (proxy, key, value)
   Layer.clear ()
   if Layer.check then
     Proxy.check (proxy)
-  end
-end
-
-function Proxy.replacewith (proxy, value)
-  assert (getmetatable (proxy) == Proxy)
-  Layer.clear (proxy)
-  local hidden = Layer.hidden [proxy]
-  local layer  = Layer.hidden [hidden.layer]
-  local keys   = hidden.keys
-  if #keys == 0 then
-    layer.data = value
-  else
-    hidden.parent [keys [#keys]] = value
   end
 end
 
@@ -538,6 +562,7 @@ function Proxy.exists (proxy)
     end
   else
     result = Proxy.raw (proxy) ~= nil
+         and Proxy.raw (proxy) ~= Layer.tag.null
   end
   Layer.caches.exists [proxy] = result
   return result

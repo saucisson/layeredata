@@ -119,6 +119,7 @@ describe ("issue #7", function ()
       },
     }
     layer.x.b = Layer.reference (layer.x).a
+    layer.x.c = nil
     assert.are.equal (layer.x.b.z, layer.x.a.z)
     local dumped = Layer.dump (layer)
     local l, r   = Layer.new {}
@@ -377,66 +378,64 @@ describe ("issue #39", function ()
   end)
 end)
 
-describe ("issue #46", function ()
+describe ("issue #48", function ()
   it ("is fixed", function ()
     local Layer = require "layeredata"
     local l1    = Layer.new { name = "l1" }
-    l1 [Layer.key.meta] = {
-      a = 1,
-    }
+    l1.key = true
+    assert.are.equal (l1.key, true)
+    l1.key = false
+    assert.are.equal (l1.key, false)
+    l1.key = nil
+    assert.is_nil (l1.key)
+  end)
+end)
+
+describe ("issue #49", function ()
+  it ("is fixed", function ()
+   local Layer = require "layeredata"
+   local l0 = Layer.new { name = "l0" } --nouvelle génération
+   local l1 = Layer.new { name = "l1" }
+   local l2 = Layer.new { name = "l2" }
+   local l3 = Layer.new { name = "l3" }
+
+   l0.x = "test"
+
+   l1 [Layer.key.refines]  = { l0 }
+   l1.a = "test"
+   assert.is_not_nil (l1.a)
+   assert.is_not_nil (l1.x)
+
+   l2 [Layer.key.refines]  = { l1 }
+   l2.b = "test"
+   assert.is_not_nil (l1.a)
+   assert.is_not_nil (l1.x)
+   assert.is_not_nil (l2.b)
+   assert.is_not_nil (l2.a)
+   assert.is_not_nil (l2.x)
+
+   l3 [Layer.key.refines]  = { l2 }
+   local _ = l3.b           -- Accèes à la dernière génération
+
+   assert.is_not_nil (l1.a)
+   assert.is_not_nil (l1.x) -- nil (x provient de l0)
+   assert.is_not_nil (l2.b)
+   assert.is_not_nil (l2.a) --nil (a provient de l1)
+   assert.is_not_nil (l2.x) --nil
+ end)
+end)
+
+describe ("issue #54", function ()
+  it ("is fixed", function ()
+    local Layer = require "layeredata"
+    local l1 = Layer.new { name = "l1" }
+    l1.a = 1
     local l2 = Layer.new { name = "l2" }
     l2 [Layer.key.refines] = { l1 }
+    l2.a = nil
+    assert.is_nil (l2.a)
     local l3 = Layer.new { name = "l3" }
-    l3.m = {}
-    Layer.Proxy.replacewith (l3.m, l1)
-    assert.is_not_nil (l3.m [Layer.key.meta])
+    l3 [Layer.key.refines] = { l2 }
+    assert.is_nil (l3.a)
   end)
-
-  describe ("issue #48", function ()
-    it ("is fixed", function ()
-      local Layer = require "layeredata"
-      local l1    = Layer.new { name = "l1" }
-      l1.key = true
-      assert.are.equal (l1.key, true)
-      l1.key = false
-      assert.are.equal (l1.key, false)
-      l1.key = nil
-      assert.is_nil (l1.key)
-    end)
-  end)
-
-  describe ("issue #49", function ()
-    it ("is fixed", function ()
-     local Layer = require "layeredata"
-     local l0 = Layer.new { name = "l0" } --nouvelle génération
-     local l1 = Layer.new { name = "l1" }
-     local l2 = Layer.new { name = "l2" }
-     local l3 = Layer.new { name = "l3" }
-
-     l0.x = "test"
-
-     l1 [Layer.key.refines]  = { l0 }
-     l1.a = "test"
-     assert.is_not_nil (l1.a)
-     assert.is_not_nil (l1.x)
-
-     l2 [Layer.key.refines]  = { l1 }
-     l2.b = "test"
-     assert.is_not_nil (l1.a)
-     assert.is_not_nil (l1.x)
-     assert.is_not_nil (l2.b)
-     assert.is_not_nil (l2.a)
-     assert.is_not_nil (l2.x)
-
-     l3 [Layer.key.refines]  = { l2 }
-     local _ = l3.b           -- Accèes à la dernière génération
-
-     assert.is_not_nil (l1.a)
-     assert.is_not_nil (l1.x) -- nil (x provient de l0)
-     assert.is_not_nil (l2.b)
-     assert.is_not_nil (l2.a) --nil (a provient de l1)
-     assert.is_not_nil (l2.x) --nil
-   end)
- end)
-
 end)
