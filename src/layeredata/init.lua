@@ -58,9 +58,9 @@ function Layer.new (t)
   t = t or {}
   local layer = setmetatable ({}, Layer)
   Layer.hidden [layer] = {
-    name      = t.name or Uuid (),
+    name      = t.name      or Uuid (),
     temporary = t.temporary or false,
-    data      = {},
+    data      = t.data      or {},
     observers = {},
   }
   local hidden = Layer.hidden [layer]
