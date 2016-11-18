@@ -275,11 +275,17 @@ function Layer.merge (source, target)
     for k, v in pairs (s) do
       if k == Layer.key.checks
       or k == Layer.key.defaults
-      or k == Layer.key.labels
-      or k == Layer.key.refines then
+      or k == Layer.key.labels then
         t [k] = {}
         for kk, vv in pairs (v) do
           t [k] [kk] = vv
+        end
+      elseif k == Layer.key.refines then
+        t [k] = {}
+        for _, vv in ipairs (v) do
+          if vv ~= t then
+            t [k] [#t [k]+1] = vv
+          end
         end
       elseif v == Layer.key.deleted
       or     getmetatable (v) == Reference
