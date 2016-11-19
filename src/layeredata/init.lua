@@ -539,7 +539,7 @@ function Proxy.__newindex (proxy, key, value)
   end
   local new_value = proxy [key]
   for _, co in pairs (observers) do
-    coroutine.resume (co, coroutine, proxy, key, new_value)
+    coroutine.resume (co, new_value)
   end
   Layer.clear ()
   if Layer.check then
