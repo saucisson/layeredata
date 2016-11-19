@@ -524,7 +524,7 @@ function Proxy.__newindex (proxy, key, value)
   end
   local old_value = proxy [key]
   for _, co in pairs (observers) do
-    assert (coroutine.resume (co, proxy, old_value))
+    assert (coroutine.resume (co, coroutine, proxy, old_value))
   end
   for _, k in ipairs (keys) do
     if current [k] == nil then
@@ -539,7 +539,7 @@ function Proxy.__newindex (proxy, key, value)
   end
   local new_value = proxy [key]
   for _, co in pairs (observers) do
-    coroutine.resume (co, proxy, key, new_value)
+    coroutine.resume (co, coroutine, proxy, key, new_value)
   end
   Layer.clear ()
   if Layer.check then
