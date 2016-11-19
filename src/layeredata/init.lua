@@ -269,30 +269,33 @@ end
 function Layer.merge (source, target)
   assert (getmetatable (source) == Proxy and #Layer.hidden [source].keys == 0)
   assert (getmetatable (target) == Proxy and #Layer.hidden [target].keys == 0)
+  local exceptions = {
+    [Layer.hidden [source].layer] = true,
+    [Layer.hidden [target].layer] = true,
+  }
   local function iterate (s, t)
     assert (type (s) == "table")
-    assert (type (t) == "table")
+    assert (getmetatable (t) == Proxy)
     for k, v in pairs (s) do
       if k == Layer.key.checks
       or k == Layer.key.defaults
-      or k == Layer.key.labels then
-        t [k] = {}
-        for kk, vv in pairs (v) do
-          t [k] [kk] = vv
-        end
-      elseif k == Layer.key.refines then
-        t [k] = {}
-        for _, vv in ipairs (v) do
-          if vv ~= t then
-            t [k] [#t [k]+1] = vv
-          end
-        end
-      elseif v == Layer.key.deleted
-      or     getmetatable (v) == Reference
-      or     getmetatable (v) == Proxy
-      or     type (v) ~= "table"
+      or k == Layer.key.labels
+      or v == Layer.key.deleted
+      or getmetatable (v) == Reference
+      or getmetatable (v) == Proxy
+      or type (v) ~= "table"
       then
         t [k] = v
+      elseif k == Layer.key.refines then
+        local refines = {}
+        for _, r in ipairs (v) do
+          if not exceptions [Layer.hidden [r].layer] then
+            refines [#refines+1] = r
+          end
+        end
+        if #refines ~= 0 then
+          t [Layer.key.refines] = refines
+        end
       elseif type (t [k]) == "table" then
         iterate (v, t [k])
       else
@@ -302,8 +305,7 @@ function Layer.merge (source, target)
     end
   end
   source = Layer.hidden [source].layer
-  target = Layer.hidden [target].layer
-  iterate (Layer.hidden [source].data, Layer.hidden [target].data)
+  iterate (Layer.hidden [source].data, target)
 end
 
 -- ----------------------------------------------------------------------
@@ -522,11 +524,11 @@ function Proxy.__newindex (proxy, key, value)
   local coroutine = Coromake ()
   local observers = {}
   for observer in pairs (layer.observers) do
-    observers [observer] = coroutine.create (observer)
+    observers [observer] = assert (coroutine.create (Layer.hidden [observer].handler))
   end
   local old_value = proxy [key]
   for _, co in pairs (observers) do
-    assert (coroutine.resume (co, coroutine, proxy, old_value))
+    assert (coroutine.resume (co, coroutine, proxy, key, old_value))
   end
   for _, k in ipairs (keys) do
     if current [k] == nil then
