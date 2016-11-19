@@ -328,14 +328,16 @@ end
 function Observer.enable (observer)
   assert (getmetatable (observer) == Observer)
   local layer = Layer.hidden [observer].layer
-  layer.observers [observer] = true
+  local info  = Layer.hidden [layer]
+  info.observers [observer] = true
   return observer
 end
 
 function Observer.disable (observer)
   assert (getmetatable (observer) == Observer)
   local layer = Layer.hidden [observer].layer
-  layer.observers [observer] = nil
+  local info  = Layer.hidden [layer]
+  info.observers [observer] = nil
   return observer
 end
 
