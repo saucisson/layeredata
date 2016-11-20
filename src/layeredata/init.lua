@@ -56,11 +56,14 @@ Layer.references = setmetatable ({}, IgnoreKeys  )
 function Layer.new (t)
   assert (t == nil or type (t) == "table")
   t = t or {}
+  assert (t.temporary == nil or type (t.temporary) == "boolean")
+  assert (t.write_to == nil or getmetatable (t.write_to) == Proxy)
   local layer = setmetatable ({}, Layer)
   Layer.hidden [layer] = {
     name      = t.name      or Uuid (),
     temporary = t.temporary or false,
     data      = t.data      or {},
+    write_to  = t.write_to  or false,
     observers = {},
   }
   local hidden = Layer.hidden [layer]
@@ -121,13 +124,18 @@ function Layer.clear ()
   Layer.messages = setmetatable ({}, IgnoreKeys)
 end
 
-function Layer.dump (proxy, except)
+function Layer.write_to (proxy, to)
   assert (getmetatable (proxy) == Proxy and #Layer.hidden [proxy].keys == 0)
-  local exceptions = {}
-  for k, v in pairs (except or {}) do
-    local layer = Layer.hidden [k].layer
-    exceptions [layer] = v
-  end
+  assert (not to or getmetatable (to) == Proxy)
+  local layer    = Layer.hidden [proxy].layer
+  local info     = Layer.hidden [layer]
+  local previous = info.write_to
+  info.write_to  = to
+  return previous
+end
+
+function Layer.dump (proxy)
+  assert (getmetatable (proxy) == Proxy and #Layer.hidden [proxy].keys == 0)
   local layer = Layer.hidden [proxy].layer
   local key_name = {}
   for k, v in pairs (Layer.key) do
@@ -154,9 +162,6 @@ function Layer.dump (proxy, except)
     elseif getmetatable (x) == Proxy then
       assert (not is_key)
       local p = Layer.hidden [x]
-      if exceptions [p.layer] then
-        return nil
-      end
       local l = Layer.hidden [p.layer]
       local result = "Layer.require " .. string.format ("%q", l.name)
       for _, y in ipairs (p.keys) do
@@ -226,12 +231,10 @@ function Layer.dump (proxy, except)
       assert (false)
     end
   end
-  local result = [[
-return function (Layer, layer, ref)
-{{{LOCALS}}}
-{{{BODY}}}
-end
-  ]]
+  local result = {
+    [[return function (Layer, layer, ref)]],
+    [[end]],
+  }
   local locals    = {}
   local contents  = {}
   local localsize = 0
@@ -260,19 +263,18 @@ end
     end
     locals [#locals+1] = "  local " .. t.name .. pad .. " = Layer.key." .. t.name
   end
-  result = result:gsub ("{{{NAME}}}"  , string.format ("%q", Layer.hidden [layer].name))
-  result = result:gsub ("{{{LOCALS}}}", table.concat (locals, "\n"))
-  result = result:gsub ("{{{BODY}}}"  , table.concat (contents, "\n"))
-  return result
+  if #locals ~= 0 then
+    table.insert (result, #result, table.concat (locals, "\n"))
+  end
+  if #contents ~= 0 then
+    table.insert (result, #result, table.concat (contents, "\n"))
+  end
+  return table.concat (result, "\n")
 end
 
 function Layer.merge (source, target)
   assert (getmetatable (source) == Proxy and #Layer.hidden [source].keys == 0)
   assert (getmetatable (target) == Proxy and #Layer.hidden [target].keys == 0)
-  local exceptions = {
-    [Layer.hidden [source].layer] = true,
-    [Layer.hidden [target].layer] = true,
-  }
   local function iterate (s, t)
     assert (type (s) == "table")
     assert (getmetatable (t) == Proxy)
@@ -281,21 +283,12 @@ function Layer.merge (source, target)
       or k == Layer.key.defaults
       or k == Layer.key.labels
       or v == Layer.key.deleted
+      or k == Layer.key.refines
       or getmetatable (v) == Reference
       or getmetatable (v) == Proxy
       or type (v) ~= "table"
       then
         t [k] = v
-      elseif k == Layer.key.refines then
-        local refines = {}
-        for _, r in ipairs (v) do
-          if not exceptions [Layer.hidden [r].layer] then
-            refines [#refines+1] = r
-          end
-        end
-        if #refines ~= 0 then
-          t [Layer.key.refines] = refines
-        end
       elseif type (t [k]) == "table" then
         iterate (v, t [k])
       else
@@ -517,29 +510,37 @@ function Proxy.__newindex (proxy, key, value)
         or getmetatable (key) == Proxy
         or getmetatable (key) == Reference
         or getmetatable (key) == Key)
-  local hidden    = Layer.hidden [proxy]
-  local layer     = Layer.hidden [hidden.layer]
-  local current   = layer.data
-  local keys      = hidden.keys
+  local layer     = Layer.hidden [proxy].layer
+  local info      = Layer.hidden [layer]
+  local keys      = Layer.hidden [proxy].keys
   local coroutine = Coromake ()
   local observers = {}
-  for observer in pairs (layer.observers) do
+  for observer in pairs (info.observers) do
     observers [observer] = assert (coroutine.create (Layer.hidden [observer].handler))
   end
   local old_value = proxy [key]
   for _, co in pairs (observers) do
     assert (coroutine.resume (co, coroutine, proxy, key, old_value))
   end
-  for _, k in ipairs (keys) do
-    if current [k] == nil then
-      current [k] = {}
+  if info.write_to then
+    local newp = info.write_to
+    for _, k in ipairs (keys) do
+      newp = Proxy.child (newp, k)
     end
-    current = current [k]
-  end
-  if value == nil then
-    current [key] = Layer.key.deleted
+    newp [key] = value
   else
-    current [key] = value
+    local current = info.data
+    for _, k in ipairs (keys) do
+      if current [k] == nil then
+        current [k] = {}
+      end
+      current = current [k]
+    end
+    if value == nil then
+      current [key] = Layer.key.deleted
+    else
+      current [key] = value
+    end
   end
   local new_value = proxy [key]
   for _, co in pairs (observers) do
