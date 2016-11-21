@@ -134,19 +134,6 @@ function Layer.write_to (proxy, to)
   return previous
 end
 
--- local function pad (x, s)
---   if #x > s then
---     return x
---   elseif s - #x > 3 then
---     return x
---   else
---     for _ = #x+1, s do
---       x = x .. " "
---     end
---     return x
---   end
--- end
-
 function Layer.dump (proxy)
   assert (getmetatable (proxy) == Proxy and #Layer.hidden [proxy].keys == 0)
   local layer  = Layer.hidden [proxy].layer
@@ -195,8 +182,8 @@ function Layer.dump (proxy)
           local ref = Layer.hidden [l].ref
           if ref and Layer.hidden [ref].from == reference.from then
             seen_layers [name] = layers_n
-            layers_n = layers_n+1
             result   = "r" .. tostring (layers_n)
+            layers_n = layers_n+1
             break
           end
         end
@@ -317,8 +304,8 @@ function Layer.dump (proxy)
     }
   end
   table.sort (imports, function (l, r) return l.key < r.key end)
-  for _, t in ipairs (imports) do
-    imports [#imports+1] = "  local " .. t.key .. " = " .. t.value
+  for i, t in ipairs (imports) do
+    imports [i] = "  " .. t.key .. " = " .. t.value
   end
   -- output
   if #locals ~= 0 then

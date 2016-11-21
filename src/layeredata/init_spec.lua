@@ -124,6 +124,7 @@ describe ("issue #7", function ()
     l1.x.b = Layer.reference (l1.x).a
     l2 [refines] = { l1, l0 }
     l2.x.b = nil
+    l2.y   = Layer.reference (l1).a.z
     assert.are.equal (l1.x.b.z, l1.x.a.z)
     assert.is_nil    (l2.x.b)
     local d1 = Layer.dump (l1)
