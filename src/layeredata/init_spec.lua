@@ -438,9 +438,10 @@ describe ("issue #54", function ()
     local Layer = require "layeredata"
     local l1 = Layer.new { name = "l1" }
     l1.a = 1
-    local l2 = Layer.new { name = "l2" }
+    local l2, ref = Layer.new { name = "l2" }
     l2 [Layer.key.refines] = { l1 }
     l2.a = nil
+    l2.b = ref.a
     assert.is_nil (l2.a)
     local l3 = Layer.new { name = "l3" }
     l3 [Layer.key.refines] = { l2 }

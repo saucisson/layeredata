@@ -134,99 +134,139 @@ function Layer.write_to (proxy, to)
   return previous
 end
 
+-- local function pad (x, s)
+--   if #x > s then
+--     return x
+--   elseif s - #x > 3 then
+--     return x
+--   else
+--     for _ = #x+1, s do
+--       x = x .. " "
+--     end
+--     return x
+--   end
+-- end
+
 function Layer.dump (proxy)
   assert (getmetatable (proxy) == Proxy and #Layer.hidden [proxy].keys == 0)
-  local layer = Layer.hidden [proxy].layer
-  local key_name = {}
-  for k, v in pairs (Layer.key) do
-    key_name [v] = k
+  local layer  = Layer.hidden [proxy].layer
+  local labels = {}
+  if Layer.hidden [layer].data [Layer.key.labels] then
+    for label, _ in pairs (Layer.hidden [layer].data [Layer.key.labels]) do
+      labels [label] = true
+    end
   end
-  local seen_keys = {}
-  local function convert (x, is_key, indent)
-    indent = indent or ""
-    if getmetatable (x) == Key then
+  local layers_n    = 1
+  local seen_layers = {}
+  local seen_keys   = {}
+  local function convert (x)
+    if type (x) == "string" then
+      return string.format ("%q", x)
+    elseif type (x) == "number"
+        or type (x) == "boolean" then
+      return tostring (x)
+    elseif getmetatable (x) == Key then
       seen_keys [x] = true
-      return is_key
-         and indent .. "[" .. key_name [x] .. "]"
-          or key_name [x]
-    elseif getmetatable (x) == Reference then
-      assert (not is_key)
-      local reference = Layer.hidden [x]
-      local result = "Layer.reference ("
-        .. (reference.from and string.format ("%q", reference.from) or tostring (reference.from))
-        .. ")"
-      for _, y in ipairs (reference.keys) do
-        result = result .. " [" .. convert (y) .. "]"
-      end
-      return result
+      return x.name
     elseif getmetatable (x) == Proxy then
-      assert (not is_key)
       local p = Layer.hidden [x]
       local l = Layer.hidden [p.layer]
       local result = "Layer.require " .. string.format ("%q", l.name)
-      for _, y in ipairs (p.keys) do
-        result = result .. " [" .. convert (y) .. "]"
+      for _, v in ipairs (p.keys) do
+        local s
+        if type (v) == "string" then
+          s = v:match "^[_%a][_%w]*$"
+          and "." .. v
+           or "[" .. convert (v) .. "]"
+        else
+          s = "[" .. convert (v) .. "]"
+        end
+        result  = result .. s
+      end
+      return result
+    elseif getmetatable (x) == Reference then
+      local reference = Layer.hidden [x]
+      local result
+      if labels [reference.from] then
+        result = "ref"
+      else
+        for name, p in pairs (Layer.loaded) do
+          local l   = Layer.hidden [p].layer
+          local ref = Layer.hidden [l].ref
+          if ref and Layer.hidden [ref].from == reference.from then
+            seen_layers [name] = layers_n
+            layers_n = layers_n+1
+            result   = "r" .. tostring (layers_n)
+            break
+          end
+        end
+        if not result then
+          result = "Layer.reference (" .. string.format ("%q", reference.from) .. ")"
+        end
+      end
+      for _, v in ipairs (reference.keys) do
+        local s
+        if type (v) == "string" then
+          s = v:match "^[_%a][_%w]*$"
+          and "." .. v
+           or "[" .. convert (v) .. "]"
+        else
+          s = "[" .. convert (v) .. "]"
+        end
+        result  = result .. s
       end
       return result
     elseif type (x) == "table" then
-      assert (not is_key)
-      local subresults = {}
-      local seen       = {}
-      local nindent    = indent .. "  "
+      local result = {}
       for k, v in pairs (x) do
-        if getmetatable (k) == Key then
-          seen [k] = true
-          subresults [#subresults+1] = convert (k, true, nindent) .. " = " .. convert (v, false, nindent)
-        end
-      end
-      for k, v in ipairs (x) do
-        seen [k] = true
-        local converted = convert (v, false, nindent)
-        if converted then
-          subresults [#subresults+1] = nindent .. converted
-        end
-      end
-      for _, oftype in ipairs { "number", "boolean", "string" } do
-        for k, v in pairs (x) do
-          if type (k) == oftype and not seen [k] then
-            seen [k] = true
-            local skey   = convert (k, true , nindent)
-            local svalue = convert (v, false, nindent)
-            if skey and svalue then
-              subresults [#subresults+1] =  skey .. " = " .. svalue
+        if k == Layer.key.labels then
+          local ls = {}
+          for kl, vl in pairs (v) do
+            if not labels [kl] then
+              ls [convert (kl)] = convert (vl)
             end
           end
+          if next (ls) then
+            result [convert (k)] = ls
+          end
+        else
+          result [convert (k)] = convert (v)
         end
       end
-      for k, v in pairs (x) do
-        if getmetatable (k) == Proxy then
-          seen [k] = true
-          subresults [#subresults+1] = nindent .. "[" .. convert (k, false, nindent) .. "] = " .. convert (v, false, nindent)
-        end
-      end
-      for k in pairs (x) do
-        assert (seen [k])
-      end
-      if #subresults == 0 then
-        return "{}"
-      else
-        return "{\n" .. table.concat (subresults, ",\n") .. "\n" .. indent .. "}"
-      end
-    elseif type (x) == "string" then
-      return is_key
-         and indent .. (x:match "^[_%a][_%w]*$" and x or "[" .. string.format ("%q", x) .. "]")
-          or string.format ("%q", x)
-    elseif type (x) == "number" then
-      return is_key
-         and indent .. "[" .. tostring (x) .. "]"
-          or tostring (x)
-    elseif type (x) == "boolean" then
-      return is_key
-         and indent .. "[" .. tostring (x) .. "]"
-          or tostring (x)
+      return result
     elseif type (x) == "function" then
-      assert (not is_key)
-      return indent .. string.format ("%q", string.dump (x))
+      return string.format ("%q", string.dump (x))
+    else
+      assert (false)
+    end
+  end
+  local function indent (x, level)
+    local indentation = ""
+    for _ = 1, level do
+      indentation = indentation .. "  "
+    end
+    if type (x) == "string" then
+      return x
+    elseif type (x) == "table" then
+      local lines = {}
+      for k, v in pairs (x) do
+        local match = k:match [[^"([_%a][_%w]*)"$]]
+        local key
+        if match then
+          key = match
+        else
+          key = "[" .. k .. "]"
+        end
+        lines [#lines+1] = {
+          key   = key,
+          value = indent (v, level+1),
+        }
+      end
+      table.sort (lines, function (l, r) return l.key < r.key end)
+      for i, line in ipairs (lines) do
+        lines [i] = indentation .. "  " .. line.key .. " = " .. line.value .. ","
+      end
+      return "{\n" .. table.concat (lines, "\n") .. "\n" .. indentation .. "}"
     else
       assert (false)
     end
@@ -236,35 +276,56 @@ function Layer.dump (proxy)
     [[end]],
   }
   local locals    = {}
+  local imports   = {}
   local contents  = {}
-  local localsize = 0
   local keys      = {}
   -- body
-  for key, value in pairs (Layer.hidden [layer].data) do
-    local skey   = convert (key, true, "")
-    local svalue = convert (value, false, "  "):gsub ("%%", "%%%%")
-    if skey:match "%S*%[" then
-      skey = "  layer " .. skey
+  local body  = convert (Layer.hidden [layer].data)
+  local lines = {}
+  for k, v in pairs (body) do
+    local match = k:match [[^"([_%a][_%w]*)"$]]
+    local key
+    if match then
+      key = "." .. match
     else
-      skey = "  layer." .. skey
+      key = " [" .. k .. "]"
     end
-    contents [#contents+1] = skey .. " = " .. svalue
+    lines [#lines+1] = {
+      key   = key,
+      value = indent (v, 1),
+    }
+  end
+  table.sort (lines, function (l, r) return l.key < r.key end)
+  for _, line in ipairs (lines) do
+    contents [#contents+1] = "  layer" .. line.key .. " = " .. line.value
   end
   -- locals
   for x in pairs (seen_keys) do
-    localsize = math.max (localsize, #x.name)
     keys [#keys+1] = x
   end
   table.sort (keys, function (l, r) return l.name < r.name end)
   for _, t in ipairs (keys) do
-    local pad = ""
-    for _ = #t.name+1, localsize do
-      pad = pad .. " "
-    end
-    locals [#locals+1] = "  local " .. t.name .. pad .. " = Layer.key." .. t.name
+    locals [#locals+1] = "  local " .. t.name .. " = Layer.key." .. t.name
   end
+  -- imports
+  for x, n in pairs (seen_layers) do
+    local key   = "local l" .. tostring (n) .. ", r" .. tostring (n)
+    local value = "Layer.require " .. string.format ("%q", x)
+    imports [#imports+1] = {
+      key   = key,
+      value = value,
+    }
+  end
+  table.sort (imports, function (l, r) return l.key < r.key end)
+  for _, t in ipairs (imports) do
+    imports [#imports+1] = "  local " .. t.key .. " = " .. t.value
+  end
+  -- output
   if #locals ~= 0 then
     table.insert (result, #result, table.concat (locals, "\n"))
+  end
+  if #imports ~= 0 then
+    table.insert (result, #result, table.concat (imports, "\n"))
   end
   if #contents ~= 0 then
     table.insert (result, #result, table.concat (contents, "\n"))
