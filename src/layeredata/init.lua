@@ -61,9 +61,9 @@ function Layer.new (t)
   local layer = setmetatable ({}, Layer)
   Layer.hidden [layer] = {
     name      = t.name      or Uuid (),
-    temporary = t.temporary or false,
+    temporary = t.temporary or nil,
     data      = t.data      or {},
-    write_to  = t.write_to  or false,
+    write_to  = t.write_to  or nil,
     observers = {},
   }
   local hidden = Layer.hidden [layer]
@@ -122,6 +122,13 @@ function Layer.clear ()
     dependencies = setmetatable ({}, Metatable),
   }
   Layer.messages = setmetatable ({}, IgnoreKeys)
+end
+
+function Layer.is_empty (proxy)
+  assert (getmetatable (proxy) == Proxy and #Layer.hidden [proxy].keys == 0)
+  local layer = Layer.hidden [proxy].layer
+  local data  = Layer.hidden [layer].data
+  return not not next (data)
 end
 
 function Layer.write_to (proxy, to)
@@ -571,6 +578,7 @@ function Proxy.__newindex (proxy, key, value)
     assert (coroutine.resume (co, coroutine, proxy, key, old_value))
   end
   if info.write_to then
+    assert (info.write_to ~= false)
     local newp = info.write_to
     for _, k in ipairs (keys) do
       newp = Proxy.child (newp, k)
