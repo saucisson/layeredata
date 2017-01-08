@@ -229,7 +229,7 @@ function Layer.dump (proxy)
       end
       return result
     elseif type (x) == "function" then
-      return string.format ("%q", string.dump (x))
+      return nil, "cannot dump functions"
     else
       assert (false)
     end
