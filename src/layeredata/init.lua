@@ -667,8 +667,7 @@ function Proxy.dependencies (proxy)
     Layer.statistics.dependencies [proxy] = (Layer.statistics.dependencies [proxy] or 0) + 1
     if Proxy.exists (proxy) then
       local refines, dependencies
-      local c3 = C3.new {
-        debug      = false,
+      local c3 = C3 {
         superclass = function (p)
           return p and refines (p) or {}
         end,
