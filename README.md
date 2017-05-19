@@ -1,6 +1,6 @@
-[![Build status](https://app.wercker.com/status/091b4342d5d89fa9e55f7f7373f7a6fc/s/master "wercker status")](https://app.wercker.com/project/byKey/091b4342d5d89fa9e55f7f7373f7a6fc)
-[![Coverage Status](https://coveralls.io/repos/github/cosyverif/layeredata/badge.svg)](https://coveralls.io/github/cosyverif/layeredata)
-[![Chat](https://badges.gitter.im/cosyverif/layeredata.svg)](https://gitter.im/cosyverif/layeredata?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Build status](https://travis-ci.org/saucisson/layeredata.svg?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/saucisson/layeredata/badge.svg)](https://coveralls.io/github/saucisson/layeredata)
+[![Chat](https://badges.gitter.im/saucisson/layeredata.svg)](https://gitter.im/saucisson/layeredata?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 # Layered Data
 
