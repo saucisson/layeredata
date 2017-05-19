@@ -1,4 +1,4 @@
-[![Build status](https://travis-ci.org/saucisson/layeredata.svg?branch=master)
+[![Build status](https://travis-ci.org/saucisson/layeredata.svg?branch=master)](https://travis-ci.org/saucisson/layeredata)
 [![Coverage Status](https://coveralls.io/repos/github/saucisson/layeredata/badge.svg)](https://coveralls.io/github/saucisson/layeredata)
 [![Chat](https://badges.gitter.im/saucisson/layeredata.svg)](https://gitter.im/saucisson/layeredata?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
