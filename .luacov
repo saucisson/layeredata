@@ -1,0 +1,8 @@
+return {
+	statsfile   = "luacov.stats.out",
+	reportfile  = "luacov.report.out",
+	deletestats = true,
+	modules     = {
+    ["layeredata"] = "src/layeredata/init.lua",
+  },
+}

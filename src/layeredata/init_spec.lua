@@ -14,7 +14,31 @@ describe ("issue #1", function ()
         z = 1,
       },
     }
-    assert.are_equal (layer.x.z, 1)
+    assert.has.no.errors (function ()
+      local _ = layer.x.z
+    end)
+    assert.are_not.equal (layer.x.z, 1)
+    assert.is_nil (layer.x.z)
+  end)
+end)
+
+describe ("simple test", function ()
+  it ("is correct", function ()
+    local Layer = require "layeredata"
+    local l1 = Layer.new { name = "layer-1" }
+    local l2 = Layer.new { name = "layer-2" }
+    l1.a = {
+      b = {
+        c = 1,
+      }
+    }
+    l2.a = {
+      b = {
+        d = 1,
+      }
+    }
+    l1 [Layer.key.refines] = { l2 }
+    assert.are.equal (l1.a.b.d, l2.a.b.d)
   end)
 end)
 
@@ -25,7 +49,7 @@ describe ("issue #2", function ()
     layer.x = {}
     layer.x.y = Layer.reference (layer.x)
     assert.are.equal (layer.x, layer.x.y)
-    assert (Layer.encode (layer):match "y")
+    -- assert (Layer.encode (layer):match "y")
   end)
 end)
 
@@ -87,38 +111,43 @@ end)
 
 describe ("issue #7", function ()
   it ("is fixed", function ()
-    local Layer  = require "layeredata"
-    local layer  = Layer.new { name = "layer" }
-    layer.x = {
+    local Layer   = require "layeredata"
+    local refines = Layer.key.refines
+    local l0      = Layer.new { name = "l0" }
+    local l1      = Layer.new { name = "l1" }
+    local l2      = Layer.new { name = "l2", temporary = true }
+    l1.x = {
       a = {
         z = 1,
       },
     }
-    layer.x.b = Layer.reference (layer.x).a
-    assert (Layer.encode (layer):match "%[labels%]")
-    local dumped = Layer.dump (layer)
-    assert.is_not_nil (dumped.x.b)
-    dumped.x.b = nil
-    assert.are_same (dumped, {
-      x = {
-        a = {
-          z = 1,
-        },
-      }
-    })
+    l1.x.b = Layer.reference (l1.x).a
+    l2 [refines] = { l1, l0 }
+    l2.x.b = nil
+    l2.y   = Layer.reference (l1).a.z
+    assert.are.equal (l1.x.b.z, l1.x.a.z)
+    assert.is_nil    (l2.x.b)
+    local d1 = Layer.dump (l1)
+    local d2 = Layer.dump (l2, { [l1] = true })
+    local l, r   = Layer.new {}
+    local loader = _G.loadstring or _G.load
+    loader (d1) () (Layer, l, r)
+    assert.are.equal (l.x.b.z, l1.x.a.z)
+    loader (d2) () (Layer, l, r)
+    assert.is_nil (l.x.b)
   end)
 end)
 
 describe ("issue #8", function ()
   it ("is fixed", function ()
-    local Layer   = require "layeredata"
-    local refines = Layer.key.refines
-    local layer   = Layer.new { name = "mylayer" }
+    local Layer      = require "layeredata"
+    local refines    = Layer.key.refines
+    local layer, ref = Layer.new { name = "mylayer" }
     layer.root = {
       x = { 1 }
     }
     layer.root.a = {
-      [refines] = { Layer.reference (layer).root },
+      [refines] = { ref.root },
     }
     if #setmetatable ({}, { __len = function () return 1 end }) ~= 1 then
       assert.are.equal (Layer.len (layer.root.a.x), 1)
@@ -133,12 +162,11 @@ describe ("issue #9", function ()
     local Layer    = require "layeredata"
     local checks   = Layer.key.checks
     local refines  = Layer.key.refines
-    local messages = Layer.key.messages
     local layer    = Layer.new { name = "layer" }
     layer.a = {
       [checks] = {
         function (proxy)
-          if proxy.final and not proxy.value then
+          if proxy.final and proxy.value == nil then
             Layer.coroutine.yield ("id", "message")
           end
         end
@@ -157,58 +185,10 @@ describe ("issue #9", function ()
         Layer.reference (layer).a
       },
     }
-    assert.is_nil     (layer.a [messages])
-    assert.is_nil     (layer.b [messages])
-    assert.is_not_nil (layer.c [messages])
-  end)
-end)
-
-describe ("issue #10", function ()
-  it ("is fixed", function ()
-    local Layer   = require "layeredata"
-    local refines = Layer.key.refines
-    local a = Layer.new { name = "a" }
-    local b = Layer.new { name = "b" }
-    local c = Layer.new { name = "c" }
-    a.x = {
-      value = 1,
-    }
-    b [refines] = { a }
-    b.y = {
-      [refines] = { Layer.reference (a).x }
-    }
-    c [refines] = { b }
-    c.z = {
-      [refines] = { Layer.reference (a).y }
-    }
-    local d = Layer.flatten (c, { compact = true })
-    assert.are.equal (d.x.value, d.y.value)
-    assert.are.equal (d.y.value, d.z.value)
-    assert.are.equal (d.z.value, 1)
-    assert.are.equal (d.z.value, c.z.value)
-    assert.are.equal (c.z.value, b.y.value)
-    assert.are.equal (b.y.value, a.x.value)
-  end)
-end)
-
-describe ("issue #11", function ()
-  it ("is fixed", function ()
-    local Layer   = require "layeredata"
-    local refines = Layer.key.refines
-    local layer   = Layer.new { name = "layer" }
-    layer.a = {
-      x = {
-        z = {
-          value = 1,
-        },
-      },
-    }
-    layer.a.y = {
-      [refines] = { Layer.reference (layer.a).x }
-    }
-    local flat = Layer.flatten (layer)
-    assert.are.equal (flat.a.y.z.value, layer.a.x.z.value)
-    assert.are.equal (flat.a.x.z.value, 1)
+    Layer.check = true
+    assert.is_nil     (Layer.Proxy.messages (layer.a))
+    assert.is_nil     (Layer.Proxy.messages (layer.b))
+    assert.is_not_nil (Layer.Proxy.messages (layer.c))
   end)
 end)
 
@@ -323,63 +303,6 @@ describe ("issue #18", function ()
   end)
 end)
 
-describe ("issue #19", function ()
-  it ("is fixed", function ()
-    local Layer   = require "layeredata"
-    local meta    = Layer.key.meta
-    local checks  = Layer.key.checks
-    local refines = Layer.key.refines
-    local layer   = Layer.new { name = "record" }
-    local model   = Layer.new { name = "record instance" }
-    layer [meta] = {
-      record = {
-        [meta] = {
-          __tags__ = {},
-        },
-        [checks] = {
-          check_tags = function (proxy)
-            local message = ""
-            local tags = proxy [meta].__tags__
-            for tag, value in Layer.pairs (tags) do
-              if value ["__value_type__"] ~= nil
-              or value ["__value_container__"] ~= nil then
-                if proxy [tag] == nil then
-                  message = message .. "Key '" .. tostring (tag) .. "' is missing. "
-                elseif value ["__value_type__"] ~= nil
-                   and type (proxy [tag]) ~= type (value["__value_type__"]) then
-                  message = message .. "Type of " .. tostring(tag) .. "'s value is wrong. "
-                elseif value["__value_container__"] ~= nil then
-                  for k, v in Layer.pairs (value ["__value_container__"]) do
-                    print(k, v)
-                  end
-                end
-              end
-            end
-            if message ~= "" then
-              return "check_tags", message
-            end
-          end,
-        },
-      },
-    }
-    model [refines] = {
-      layer,
-    }
-    model.model = {
-      [refines] = {
-        Layer.reference (model) [meta].record,
-      },
-      [meta] = {
-        __tags__ = {
-          name = { __value_type__ = "string" },
-        },
-      },
-      name = "model",
-    }
-    Layer.encode (Layer.flatten (model))
-  end)
-end)
-
 describe ("issue #20", function ()
   it ("is fixed", function ()
     local Layer    = require "layeredata"
@@ -407,32 +330,11 @@ describe ("issue #20", function ()
   end)
 end)
 
-describe ("issue #22", function ()
-  it ("is fixed", function ()
-    local Layer    = require "layeredata"
-    local meta     = Layer.key.meta
-    local defaults = Layer.key.defaults
-    local layer    = Layer.new { name = "layer" }
-    layer.d = {
-      v = 0,
-    }
-    layer.a = {
-      x = 1,
-      y = 2,
-      [meta]     = { z = 3 },
-      [defaults] = { Layer.reference (layer).d },
-    }
-    local flattened = Layer.flatten (layer)
-    assert.are.equal (flattened.a [meta].z, 3)
-  end)
-end)
-
 describe ("issue #23", function ()
   it ("is fixed", function ()
     local Layer    = require "layeredata"
     local checks   = Layer.key.checks
     local defaults = Layer.key.defaults
-    local messages = Layer.key.messages
     local record   = Layer.new { name = "record" }
     record [checks] = {
      check = function ()
@@ -445,8 +347,9 @@ describe ("issue #23", function ()
      b = {},
     }
     local _ = model.a.b
-    assert.is_true (model.a.b [messages].checked)
-    assert.is_nil  (model [messages])
+    Layer.check = true
+    assert.is_true (Layer.Proxy.messages (model.a.b).checked)
+    assert.is_nil  (Layer.Proxy.messages (model))
   end)
 end)
 
@@ -458,20 +361,91 @@ describe ("issue #38", function ()
       a = {},
     }
     layer.b = {}
-    assert.is_true  (Layer.Proxy.has_meta (layer [Layer.key.meta].a))
-    assert.is_false (Layer.Proxy.has_meta (layer.b))
+    local function has_meta (proxy)
+      for _, key in Layer.Proxy.keys (proxy) do
+        if key == Layer.key.meta then
+          return true
+        end
+      end
+      return false
+    end
+    assert.is_true  (has_meta (layer [Layer.key.meta].a))
+    assert.is_false (has_meta (layer.b))
   end)
+end)
 
-  describe ("issue #39", function ()
-    it ("is fixed", function ()
-      local Layer = require "layeredata"
-      local l1    = Layer.new { name = "l1" }
-      l1 [Layer.key.meta] = {
-        ref = Layer.reference (l1).t,
-      }
-      local l2 = Layer.new { name = "l2" }
-      l2 [Layer.key.refines] = { l1 }
-      assert.are.equal (l2 [Layer.key.meta].ref, l2.t)
-    end)
+describe ("issue #39", function ()
+  it ("is fixed", function ()
+    local Layer = require "layeredata"
+    local l1    = Layer.new { name = "l1" }
+    l1 [Layer.key.meta] = {
+      ref = Layer.reference (l1).t,
+    }
+    local l2 = Layer.new { name = "l2" }
+    l2 [Layer.key.refines] = { l1 }
+    assert.are.equal (l2 [Layer.key.meta].ref, l2.t)
+  end)
+end)
+
+describe ("issue #48", function ()
+  it ("is fixed", function ()
+    local Layer = require "layeredata"
+    local l1    = Layer.new { name = "l1" }
+    l1.key = true
+    assert.are.equal (l1.key, true)
+    l1.key = false
+    assert.are.equal (l1.key, false)
+    l1.key = nil
+    assert.is_nil (l1.key)
+  end)
+end)
+
+describe ("issue #49", function ()
+  it ("is fixed", function ()
+   local Layer = require "layeredata"
+   local l0 = Layer.new { name = "l0" } --nouvelle génération
+   local l1 = Layer.new { name = "l1" }
+   local l2 = Layer.new { name = "l2" }
+   local l3 = Layer.new { name = "l3" }
+
+   l0.x = "test"
+
+   l1 [Layer.key.refines]  = { l0 }
+   l1.a = "test"
+   assert.is_not_nil (l1.a)
+   assert.is_not_nil (l1.x)
+
+   l2 [Layer.key.refines]  = { l1 }
+   l2.b = "test"
+   assert.is_not_nil (l1.a)
+   assert.is_not_nil (l1.x)
+   assert.is_not_nil (l2.b)
+   assert.is_not_nil (l2.a)
+   assert.is_not_nil (l2.x)
+
+   l3 [Layer.key.refines]  = { l2 }
+   local _ = l3.b           -- Accèes à la dernière génération
+
+   assert.is_not_nil (l1.a)
+   assert.is_not_nil (l1.x) -- nil (x provient de l0)
+   assert.is_not_nil (l2.b)
+   assert.is_not_nil (l2.a) --nil (a provient de l1)
+   assert.is_not_nil (l2.x) --nil
+ end)
+end)
+
+describe ("issue #54", function ()
+  it ("is fixed", function ()
+    local Layer = require "layeredata"
+    local l1 = Layer.new { name = "l1" }
+    l1.a = 1
+    local l2, ref = Layer.new { name = "l2" }
+    l2 [Layer.key.refines] = { l1 }
+    l2.a = nil
+    l2.b = ref.a
+    assert.is_nil (l2.a)
+    local l3 = Layer.new { name = "l3" }
+    l3 [Layer.key.refines] = { l2 }
+    assert.is_nil (l3.a)
   end)
 end)
