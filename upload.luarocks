@@ -1,5 +1,9 @@
 #! /bin/bash
 
+if [ "${TRAVIS_EVENT_TYPE}" != "push" ]; then
+  exit 0
+fi
+
 if [ "${TRAVIS_BRANCH}" = "master" ]; then
   tag=$(git describe --tags --abbrev=0 || echo "0.0")
   count=$(git rev-list --count HEAD ^"${tag}" || git rev-list --count HEAD)
@@ -9,7 +13,7 @@ else
 fi
 cd rockspec || exit 1
 sed -e "s/master-1/${tag}-${count}/" \
-    -e "s/master/${tag}/" \
+    -e "s/master/${TRAVIS_BRANCH}/" \
     "layeredata-master-1.rockspec" \
   > "layeredata-${tag}-${count}.rockspec"
 luarocks upload \
