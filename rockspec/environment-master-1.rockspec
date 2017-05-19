@@ -1,8 +1,8 @@
-package = "layeredata-env"
+package = "environment"
 version = "master-1"
 
 source = {
-  url    = "git+https://github.com/cosyverif/layeredata.git",
+  url    = "git+https://github.com/saucisson/layeredata.git",
   branch = "master",
 }
 
@@ -10,7 +10,7 @@ description = {
   summary     = "Development environment for layeredata",
   detailed    = [[]],
   license     = "MIT/X11",
-  homepage    = "https://github.com/cosyverif/layeredata",
+  homepage    = "https://github.com/saucisson/layeredata",
   maintainer  = "Alban Linard <alban@linard.fr>",
 }
 
