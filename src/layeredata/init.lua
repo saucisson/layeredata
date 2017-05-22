@@ -851,6 +851,7 @@ function Proxy.__len (proxy)
   if cache [proxy] then
     return cache [proxy]
   end
+  cache [proxy] = false
   for i = 1, math.huge do
     if proxy [i] == nil then
       cache [proxy] = i-1
@@ -870,8 +871,9 @@ function Proxy.__ipairs (proxy)
     end)
   end
   Layer.statistics.ipairs [proxy] = (Layer.statistics.ipairs [proxy] or 0) + 1
+  cache [proxy]   = {}
   local coroutine = Coromake ()
-  local cached = {}
+  local cached    = {}
   for i = 1, math.huge do
     local result = proxy [i]
     if result == nil then
@@ -890,7 +892,6 @@ end
 
 function Proxy.__pairs (proxy)
   assert (getmetatable (proxy) == Proxy)
-  local coroutine = Coromake ()
   local cache     = Layer.caches.pairs
   if cache [proxy] then
     return coroutine.wrap (function ()
@@ -900,7 +901,9 @@ function Proxy.__pairs (proxy)
     end)
   end
   Layer.statistics.pairs [proxy] = (Layer.statistics.pairs [proxy] or 0) + 1
-  local result = {}
+  cache [proxy]   = {}
+  local coroutine = Coromake ()
+  local result    = {}
   for _, current in Proxy.dependencies (proxy) do
     while getmetatable (current) == Reference do
       current = Reference.resolve (current, proxy)
