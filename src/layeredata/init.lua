@@ -748,7 +748,7 @@ function Proxy.dependencies (proxy)
                   raw_parent = Reference.resolve (raw_parent, proxy)
                 end
               until getmetatable (raw_parent) ~= Proxy and getmetatable (raw_parent) ~= Reference
-              for _, default in ipairs (raw_parent [Layer.key.defaults] or {}) do
+              for _, default in ipairs (raw_parent and raw_parent [Layer.key.defaults] or {}) do
                 refinments.parents [#refinments.parents+1] = default
               end
             end
